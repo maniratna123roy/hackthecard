@@ -90,7 +90,7 @@ function Stars({ seed, n, maxY, color, big = 0.08 }: { seed: number; n: number; 
   );
 }
 
-function Grain({ id, opacity = 0.18 }: { id: string; opacity?: number }) {
+export function Grain({ id, opacity = 0.18 }: { id: string; opacity?: number }) {
   return (
     <>
       <filter id={`${id}grain`} x="0" y="0" width="100%" height="100%">
@@ -454,9 +454,8 @@ export function ThemeArt({ theme, layer, className, dim = 0 }: { theme: string; 
   const id = useId().replace(/:/g, "");
   const art = (ART[theme] ?? tropical)(id);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" className={className} aria-hidden>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" className={className} style={{ filter: "saturate(1.55) brightness(1.12) contrast(1.05)" }} aria-hidden>
       {art[layer]}
-      {layer === "back" && <Grain id={id} />}
       {layer === "back" && dim > 0 && <rect width={W} height={H} fill="#000" opacity={dim} />}
     </svg>
   );

@@ -71,7 +71,6 @@ function Shell({ theme, children, dim }: { theme: CardTheme; children?: ReactNod
         <div style={{ position: "absolute", inset: 5, borderRadius: 12, border: `1px solid ${hex(theme.line, 0.7)}`, pointerEvents: "none" }} />
         <Corners color={theme.line} />
       </div>
-      <div style={{ position: "absolute", inset: 0, borderRadius: 24, pointerEvents: "none", background: "linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.10) 45%, transparent 55%)" }} />
     </div>
   );
 }
