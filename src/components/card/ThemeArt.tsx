@@ -32,13 +32,15 @@ function ridge(seed: number, y: number, amp: number, steps = 9, sharp = false) {
 function Frond({ x, y, len, angle, color, n = 14, width = 2.2, droop = 0.35 }: { x: number; y: number; len: number; angle: number; color: string; n?: number; width?: number; droop?: number }) {
   const a = (angle * Math.PI) / 180;
   const lines: ReactNode[] = [];
+  const q0 = (n: number) => Math.round(n * 10) / 10;
   const pts: [number, number][] = [];
   for (let i = 0; i <= n; i++) {
     const t = i / n;
     const px = x + Math.cos(a) * len * t;
     const py = y + Math.sin(a) * len * t + droop * len * t * t;
-    pts.push([px, py]);
+    pts.push([q0(px), q0(py)]);
   }
+  const q = (n: number) => Math.round(n * 10) / 10;
   const rib = "M" + pts.map((p) => p.join(",")).join(" L");
   for (let i = 1; i < n; i++) {
     const [px, py] = pts[i];
@@ -47,7 +49,7 @@ function Frond({ x, y, len, angle, color, n = 14, width = 2.2, droop = 0.35 }: {
     const l = len * 0.32 * Math.sin((i / n) * Math.PI) + 3;
     for (const s of [-1, 1]) {
       const da = dir + s * 1.0;
-      lines.push(<path key={`${i}${s}`} d={`M${px},${py} Q${px + Math.cos(da) * l * 0.6},${py + Math.sin(da) * l * 0.6 - 2} ${px + Math.cos(da + s * 0.35) * l},${py + Math.sin(da + s * 0.35) * l + l * 0.25}`} stroke={color} strokeWidth={width} fill="none" strokeLinecap="round" />);
+      lines.push(<path key={`${i}${s}`} d={`M${px},${py} Q${q(px + Math.cos(da) * l * 0.6)},${q(py + Math.sin(da) * l * 0.6 - 2)} ${q(px + Math.cos(da + s * 0.35) * l)},${q(py + Math.sin(da + s * 0.35) * l + l * 0.25)}`} stroke={color} strokeWidth={width} fill="none" strokeLinecap="round" />);
     }
   }
   return <g><path d={rib} stroke={color} strokeWidth={width * 0.9} fill="none" />{lines}</g>;
@@ -125,7 +127,7 @@ const tropical: Art = (id) => ({
       <path d={ridge(3, 150, 40, 12)} fill="#86ad6a" opacity={0.7} />
       {[60, 140, 220, 330, 420, 500].map((x, i) => <rect key={x} x={x} y={40 + (i % 3) * 18} width={6 + (i % 2) * 4} height={260} fill="#55804a" opacity={0.6} />)}
       <path d={ridge(7, 175, 50, 10)} fill="#3f6f3c" />
-      {[[30, 120, -60], [120, 100, -110], [470, 110, -80], [540, 95, -130], [260, 130, -95]].map(([x, y, a], i) => (
+      {[[30, 160, -60], [470, 150, -80], [540, 120, -130], [300, 170, -95]].map(([x, y, a], i) => (
         <Frond key={i} x={x} y={y} len={90} angle={a} color="#2c5a31" width={2.4} />
       ))}
       {[[20, 140, -30], [80, 150, -150], [500, 140, -40], [560, 150, -150], [300, 160, -20], [380, 165, -160]].map(([x, y, a], i) => (
