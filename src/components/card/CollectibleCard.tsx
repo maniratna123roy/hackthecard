@@ -78,7 +78,7 @@ function Shell({ theme, children, dim }: { theme: CardTheme; children?: ReactNod
 const italic: CSSProperties = { fontFamily: "'Instrument Sans', serif", fontStyle: "italic" };
 
 export const CardFront = forwardRef<HTMLDivElement, { d: DeveloperData; theme: CardTheme }>(function CardFront({ d, theme }, ref) {
-  const shadow = `0 1px 2px ${hex(theme.frame, 0.6)}`;
+  const shadow = theme.onArt.startsWith("#f") ? `0 1px 3px ${hex(theme.ink, 0.7)}` : `0 1px 3px #ffffffcc`;
   return (
     <div ref={ref}>
       <Shell theme={theme}>
@@ -263,7 +263,7 @@ export const PocketCard = forwardRef<HTMLDivElement, { d: DeveloperData; theme: 
             ))}
           </div>
           {recent.length > 0 && (
-            <div style={{ display: "grid", gridTemplateRows: "repeat(7, 4px)", gridAutoFlow: "column", gap: 1, marginTop: 6 }}>
+            <div style={{ display: "grid", gridTemplateRows: "repeat(7, 4px)", gridAutoColumns: "4px", gridAutoFlow: "column", gap: 1, marginTop: 6 }}>
               {recent.map((c) => <span key={c.date} style={{ width: 4, height: 4, borderRadius: 1, background: theme.heat[Math.min(4, c.level)] }} />)}
             </div>
           )}
