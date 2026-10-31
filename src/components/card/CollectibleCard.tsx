@@ -27,7 +27,7 @@ function Label({ theme, children, style }: { theme: CardTheme; children: ReactNo
 
 function Heatmap({ days, theme }: { days: ContributionDay[]; theme: CardTheme }) {
   const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date)).slice(-371);
-  const first = new Date(sorted[0].date + "T00:00:00Z").getUTCDay();
+  const first = new Date(sorted[0]!.date + "T00:00:00Z").getUTCDay();
   const cells: (ContributionDay | null)[] = [...Array(first).fill(null), ...sorted];
   const weeks: (ContributionDay | null)[][] = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
@@ -38,7 +38,7 @@ function Heatmap({ days, theme }: { days: ContributionDay[]; theme: CardTheme })
     const d = w.find(Boolean);
     if (!d) return;
     const m = new Date(d.date + "T00:00:00Z").toLocaleString("en-US", { month: "short", timeZone: "UTC" });
-    if (!months.length || months[months.length - 1].m !== m) months.push({ x: i * (C + G), m });
+    if (!months.length || months[months.length - 1]!.m !== m) months.push({ x: i * (C + G), m });
   });
   return (
     <svg width={show.length * (C + G)} height={7 * (C + G) + 8} style={{ display: "block" }}>
@@ -62,11 +62,11 @@ function Corners({ color }: { color: string }) {
   return <>{c("top left")}{c("top right")}{c("bottom left")}{c("bottom right")}</>;
 }
 
-function Shell({ theme, children, dim }: { theme: CardTheme; children: ReactNode; dim?: number }) {
+function Shell({ theme, children, dim }: { theme: CardTheme; children?: ReactNode; dim?: number }) {
   return (
     <div style={{ width: W + 16, height: H + 16, padding: 8, borderRadius: 24, background: theme.frame, position: "relative", fontFamily: "'Google Sans', 'Instrument Sans', system-ui, sans-serif" }}>
       <div style={{ position: "relative", width: W, height: H, borderRadius: 16, overflow: "hidden", background: theme.panel }}>
-        <ThemeArt theme={theme.id} layer="back" dim={dim} className="absolute inset-0 h-full w-full" />
+        <ThemeArt theme={theme.id} layer="back" dim={dim ?? 0} className="absolute inset-0 h-full w-full" />
         {children}
         <div style={{ position: "absolute", inset: 5, borderRadius: 12, border: `1px solid ${hex(theme.line, 0.7)}`, pointerEvents: "none" }} />
         <Corners color={theme.line} />

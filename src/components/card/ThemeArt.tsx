@@ -19,10 +19,10 @@ function ridge(seed: number, y: number, amp: number, steps = 9, sharp = false) {
   const r = rng(seed);
   const pts: [number, number][] = [];
   for (let i = 0; i <= steps; i++) pts.push([(W / steps) * i, y - r() * amp]);
-  let d = `M0,${H} L0,${pts[0][1]}`;
+  let d = `M0,${H} L0,${pts[0]![1]}`;
   for (let i = 1; i < pts.length; i++) {
-    const [x0, y0] = pts[i - 1];
-    const [x1, y1] = pts[i];
+    const [x0, y0] = pts[i - 1]!;
+    const [x1, y1] = pts[i]!;
     if (sharp) d += ` L${(x0 + x1) / 2},${Math.min(y0, y1) - amp * 0.6 * r()} L${x1},${y1}`;
     else d += ` Q${x0 + (x1 - x0) / 2},${(y0 + y1) / 2 - amp * 0.3} ${x1},${y1}`;
   }
@@ -43,8 +43,8 @@ function Frond({ x, y, len, angle, color, n = 14, width = 2.2, droop = 0.35 }: {
   const q = (n: number) => Math.round(n * 10) / 10;
   const rib = "M" + pts.map((p) => p.join(",")).join(" L");
   for (let i = 1; i < n; i++) {
-    const [px, py] = pts[i];
-    const [nx, ny] = pts[i + 1];
+    const [px, py] = pts[i]!;
+    const [nx, ny] = pts[i + 1]!;
     const dir = Math.atan2(ny - py, nx - px);
     const l = len * 0.32 * Math.sin((i / n) * Math.PI) + 3;
     for (const s of [-1, 1]) {
@@ -127,10 +127,10 @@ const tropical: Art = (id) => ({
       <path d={ridge(3, 150, 40, 12)} fill="#86ad6a" opacity={0.7} />
       {[60, 140, 220, 330, 420, 500].map((x, i) => <rect key={x} x={x} y={40 + (i % 3) * 18} width={6 + (i % 2) * 4} height={260} fill="#55804a" opacity={0.6} />)}
       <path d={ridge(7, 175, 50, 10)} fill="#3f6f3c" />
-      {[[30, 160, -60], [470, 150, -80], [540, 120, -130], [300, 170, -95]].map(([x, y, a], i) => (
+      {([[30, 160, -60], [470, 150, -80], [540, 120, -130], [300, 170, -95]] as const).map(([x, y, a], i) => (
         <Frond key={i} x={x} y={y} len={90} angle={a} color="#2c5a31" width={2.4} />
       ))}
-      {[[20, 140, -30], [80, 150, -150], [500, 140, -40], [560, 150, -150], [300, 160, -20], [380, 165, -160]].map(([x, y, a], i) => (
+      {([[20, 140, -30], [80, 150, -150], [500, 140, -40], [560, 150, -150], [300, 160, -20], [380, 165, -160]] as const).map(([x, y, a], i) => (
         <Frond key={`b${i}`} x={x} y={y} len={110} angle={a} color="#1f4a2a" width={3} />
       ))}
       <path d={ridge(11, 200, 30, 14)} fill="#183c24" />
@@ -139,7 +139,7 @@ const tropical: Art = (id) => ({
   fore: (
     <>
       <path d="M0,0 C30,40 20,90 40,140 M0,0 C60,30 80,70 110,80 M560,0 C520,50 540,100 515,150" stroke="#163a22" strokeWidth={2.5} fill="none" />
-      {[[40, 140, 60], [110, 80, 20], [515, 150, 120], [8, 60, 40], [540, 70, 140]].map(([x, y, r], i) => <Leaf key={i} x={x} y={y} s={26} rot={r} color="#2d6a35" vein="#7fb05a" />)}
+      {([[40, 140, 60], [110, 80, 20], [515, 150, 120], [8, 60, 40], [540, 70, 140]] as const).map(([x, y, r], i) => <Leaf key={i} x={x} y={y} s={26} rot={r} color="#2d6a35" vein="#7fb05a" />)}
       <Leaf x={-6} y={300} s={60} rot={-40} color="#1d4d2a" vein="#5f9a4a" />
       <Leaf x={566} y={310} s={60} rot={-140} color="#1d4d2a" vein="#5f9a4a" />
     </>
@@ -159,7 +159,7 @@ const oceanic: Art = (id) => ({
       <path d="M0,150 C80,135 140,165 230,150 C320,135 400,170 560,148 L560,386 L0,386Z" fill="#167aa2" />
       <path d="M0,175 C100,160 200,190 300,172 C400,155 470,185 560,170 L560,386 L0,386Z" fill="#0e5f8a" />
       <g fill="#0b2a4a" opacity={0.7}>
-        {[[90, 150], [470, 140]].map(([x, y], i) => <path key={i} d={`M${x},${y} q14,-6 28,0 q-14,6 -28,0z M${x + 26},${y} l8,-5 l0,10z`} />)}
+        {([[90, 150], [470, 140]] as const).map(([x, y], i) => <path key={i} d={`M${x},${y} q14,-6 28,0 q-14,6 -28,0z M${x + 26},${y} l8,-5 l0,10z`} />)}
       </g>
     </>
   ),
@@ -167,7 +167,7 @@ const oceanic: Art = (id) => ({
     <>
       <path d="M0,386 L0,330 C20,300 40,310 50,280 C60,300 70,320 95,330 L120,386Z" fill="#0a2342" />
       <path d="M560,386 L560,320 C540,300 530,280 515,290 C505,310 490,330 470,340 L460,386Z" fill="#0a2342" />
-      {[[30, 290, -80], [60, 280, -100], [520, 290, -70], [545, 300, -110]].map(([x, y, a], i) => (
+      {([[30, 290, -80], [60, 280, -100], [520, 290, -70], [545, 300, -110]] as const).map(([x, y, a], i) => (
         <path key={i} d={`M${x},${y} q${Math.cos((a * Math.PI) / 180) * 30 + 8},${Math.sin((a * Math.PI) / 180) * 30} ${Math.cos((a * Math.PI) / 180) * 40},${Math.sin((a * Math.PI) / 180) * 50}`} stroke="#e8786a" strokeWidth={3} fill="none" strokeLinecap="round" />
       ))}
       <path d="M0,40 C40,20 60,60 30,80" stroke="#e6fbff" strokeWidth={1.2} fill="none" opacity={0.6} />
@@ -183,7 +183,7 @@ const rainforest: Art = (id) => ({
       <path d={ridge(21, 120, 40, 14)} fill="#2f5e4c" opacity={0.8} />
       {[40, 110, 190, 300, 380, 470, 530].map((x, i) => <path key={x} d={`M${x},0 C${x + 10},120 ${x - 8},200 ${x + 4},300 L${x + 14 + (i % 3) * 4},300 C${x + 20},200 ${x + 24},100 ${x + 12},0Z`} fill="#16392e" />)}
       <path d={ridge(23, 175, 40, 12)} fill="#0f3a2c" />
-      {[[70, 170, -50], [170, 165, -130], [420, 160, -60], [500, 170, -120], [280, 175, -90]].map(([x, y, a], i) => (
+      {([[70, 170, -50], [170, 165, -130], [420, 160, -60], [500, 170, -120], [280, 175, -90]] as const).map(([x, y, a], i) => (
         <Frond key={i} x={x} y={y} len={80} angle={a} color="#2c6a3e" n={18} width={1.6} droop={0.2} />
       ))}
       <path d={ridge(29, 205, 20, 18)} fill="#082a20" />
@@ -193,7 +193,7 @@ const rainforest: Art = (id) => ({
   fore: (
     <>
       {[30, 70, 490, 530].map((x, i) => <path key={x} d={`M${x},0 C${x + 10},40 ${x - 10},80 ${x + 4},${120 + i * 15}`} stroke="#0b2f24" strokeWidth={2} fill="none" />)}
-      {[[34, 60, 90], [74, 100, 60], [494, 80, 100], [534, 130, 80]].map(([x, y, r], i) => <Leaf key={i} x={x} y={y} s={20} rot={r} color="#3d7a4a" vein="#a7c95a" />)}
+      {([[34, 60, 90], [74, 100, 60], [494, 80, 100], [534, 130, 80]] as const).map(([x, y, r], i) => <Leaf key={i} x={x} y={y} s={20} rot={r} color="#3d7a4a" vein="#a7c95a" />)}
       <Leaf x={-10} y={250} s={70} rot={-30} color="#0e3a2a" vein="#4f8a5a" />
       <Leaf x={570} y={260} s={70} rot={-150} color="#0e3a2a" vein="#4f8a5a" />
     </>
@@ -272,7 +272,7 @@ const sakura: Art = (id) => {
       <>
         <path d="M0,40 C60,50 110,30 170,60 C200,75 230,70 260,62 M110,40 C130,20 150,15 175,10 M0,90 C40,95 70,85 100,100" stroke="#4a2c26" strokeWidth={3.5} fill="none" strokeLinecap="round" />
         <path d="M560,30 C510,45 480,40 440,60 M500,42 C490,25 470,15 450,12" stroke="#4a2c26" strokeWidth={3} fill="none" strokeLinecap="round" />
-        {[[40, 45], [80, 42], [120, 38], [150, 52], [175, 62], [210, 70], [245, 62], [140, 22], [170, 12], [30, 92], [70, 90], [520, 38], [480, 46], [450, 58], [470, 16]].map(([x, y], i) => (
+        {([[40, 45], [80, 42], [120, 38], [150, 52], [175, 62], [210, 70], [245, 62], [140, 22], [170, 12], [30, 92], [70, 90], [520, 38], [480, 46], [450, 58], [470, 16]] as const).map(([x, y], i) => (
           <g key={i} transform={`translate(${x},${y})`}>
             {[0, 72, 144, 216, 288].map((a) => <ellipse key={a} cx={0} cy={-4} rx={3} ry={4.5} fill={i % 3 ? "#f6c3cb" : "#fbe0e4"} transform={`rotate(${a})`} />)}
             <circle r={1.4} fill="#b8414b" />
@@ -357,7 +357,7 @@ const cyber: Art = (id) => {
       <>
         <path d="M0,60 L60,60 L80,80 L80,140 M560,60 L500,60 L480,80 L480,140" stroke="#19f0ff" strokeWidth={1.2} fill="none" />
         <path d="M0,330 L40,330 L60,350 L60,386 M560,330 L520,330 L500,350 L500,386" stroke="#ff3fd8" strokeWidth={1.2} fill="none" />
-        <g stroke="#19f0ff" opacity={0.6}>{Array.from({ length: 40 }, () => [r() * W, r() * 160]).map(([x, y], i) => <line key={i} x1={x} x2={x - 3} y1={y} y2={y + 10} />)}</g>
+        <g stroke="#19f0ff" opacity={0.6}>{Array.from({ length: 40 }, (): [number, number] => [r() * W, r() * 160]).map(([x, y], i) => <line key={i} x1={x} x2={x - 3} y1={y} y2={y + 10} />)}</g>
       </>
     ),
   };
@@ -440,7 +440,7 @@ const ruins: Art = (id) => ({
   fore: (
     <>
       <path d="M0,0 C20,40 10,100 30,160 M560,0 C540,50 550,110 530,170" stroke="#3a4a24" strokeWidth={2} fill="none" />
-      {[[30, 160, 80], [16, 80, 30], [530, 170, 100], [548, 90, 150]].map(([x, y, rr], i) => <Leaf key={i} x={x} y={y} s={22} rot={rr} color="#5f7438" vein="#b9b07a" />)}
+      {([[30, 160, 80], [16, 80, 30], [530, 170, 100], [548, 90, 150]] as const).map(([x, y, rr], i) => <Leaf key={i} x={x} y={y} s={22} rot={rr} color="#5f7438" vein="#b9b07a" />)}
       <path d="M0,386 L0,320 L40,320 L40,300 L70,300 L70,386Z M560,386 L560,310 L520,310 L520,330 L490,330 L490,386Z" fill="#6e6a55" />
       <Leaf x={20} y={300} s={40} rot={-60} color="#344a24" />
       <Leaf x={540} y={312} s={40} rot={-120} color="#344a24" />
@@ -452,7 +452,7 @@ const ART: Record<string, Art> = { tropical, oceanic, rainforest, desert, alpine
 
 export function ThemeArt({ theme, layer, className, dim = 0 }: { theme: string; layer: "back" | "fore"; className?: string; dim?: number }) {
   const id = useId().replace(/:/g, "");
-  const art = ART[theme](id);
+  const art = (ART[theme] ?? tropical)(id);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" className={className} aria-hidden>
       {art[layer]}

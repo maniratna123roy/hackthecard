@@ -54,7 +54,7 @@ export interface DeveloperData {
 export function parseUsername(input: string): string {
   const s = input.trim().replace(/^@/, "");
   const m = s.match(/github\.com\/([A-Za-z0-9-]+)/i);
-  return (m ? m[1] : s.split("/")[0]).trim();
+  return (m?.[1] ?? s.split("/")[0] ?? "").trim();
 }
 
 const FRONTEND = ["JavaScript", "TypeScript", "HTML", "CSS", "SCSS", "Vue", "Svelte", "Astro", "Dart"];
@@ -101,8 +101,8 @@ export function streaks(days: ContributionDay[], today = new Date().toISOString(
   for (const d of sorted) { run = d.count > 0 ? run + 1 : 0; longest = Math.max(longest, run); }
   let current = 0;
   for (let i = sorted.length - 1; i >= 0; i--) {
-    if (sorted[i].count > 0) current++;
-    else if (i === sorted.length - 1 && sorted[i].date === today) continue; // today not over yet
+    if (sorted[i]!.count > 0) current++;
+    else if (i === sorted.length - 1 && sorted[i]!.date === today) continue; // today not over yet
     else break;
   }
   return { current, longest };
