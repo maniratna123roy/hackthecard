@@ -42,6 +42,16 @@ function Index() {
   const [themeIdx, setThemeIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
+  // Loader must stay up at least this long, even when the fetch is instant.
+  const [hold, setHold] = useState(false);
+  const holdTimer = useRef<number | undefined>(undefined);
+  const startHold = () => {
+    setHold(true);
+    window.clearTimeout(holdTimer.current);
+    holdTimer.current = window.setTimeout(() => setHold(false), 2800);
+  };
+  useEffect(() => () => window.clearTimeout(holdTimer.current), []);
+  const scrollToStage = () => document.getElementById("generate")?.scrollIntoView({ behavior: "smooth" });
   const theme = THEMES[themeIdx] ?? THEMES[0]!;
   const q = useQuery({ queryKey: ["dev", user], queryFn: () => fetchDeveloper(user), retry: false, staleTime: 5 * 60_000 });
   const { ref: stageRef, scale } = useCardScale();
@@ -51,7 +61,12 @@ function Index() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (input.trim()) { setUser(input.trim()); setFlipped(false); }
+    if (input.trim()) {
+      setUser(input.trim());
+      setFlipped(false);
+      startHold();
+      scrollToStage();
+    }
   };
 
   const exportSide = async (side: "front" | "back" | "pocket") => {
