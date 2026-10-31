@@ -5,6 +5,7 @@ import { toPng } from "html-to-image";
 import { fetchDeveloper } from "@/lib/github";
 import { THEMES } from "@/lib/themes";
 import { CardBack, CardFront } from "@/components/card/CollectibleCard";
+import { Hero, Manifesto, SiteHeader } from "@/components/landing/Hero";
 import { ThemeArt } from "@/components/card/ThemeArt";
 
 export const Route = createFileRoute("/")({
@@ -69,14 +70,10 @@ function Index() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="mx-auto flex max-w-[1320px] items-end justify-between border-b border-foreground px-6 pb-3 pt-6 md:px-10">
-        <div className="text-[22px] font-bold tracking-tight">
-          Hack<span className="font-accent font-normal">the</span>Card
-        </div>
-        <div className="hidden text-[11px] uppercase tracking-[0.22em] text-muted-foreground sm:block">Series I · Twelve Worlds · Public GitHub data</div>
-      </header>
+      <SiteHeader />
+      <Hero onGenerate={(u) => { setInput(u); setUser(u); setFlipped(false); }} />
 
-      <main className="mx-auto grid max-w-[1320px] gap-10 px-6 pt-10 md:px-10 lg:grid-cols-[minmax(300px,380px)_1fr]">
+      <main id="generate" className="scroll-mt-20 mx-auto grid max-w-[1320px] gap-10 px-6 pt-16 md:px-10 lg:grid-cols-[minmax(300px,380px)_1fr]">
         <section className="flex flex-col">
           <p className="text-[11px] uppercase tracking-[0.22em] text-primary">No. {theme.no} / 12 — {theme.name}</p>
           <h1 className="mt-4 text-[44px] font-bold leading-[0.98] tracking-[-0.035em]">
@@ -150,7 +147,7 @@ function Index() {
         </section>
       </main>
 
-      <section className="mx-auto max-w-[1320px] px-6 pb-16 pt-14 md:px-10">
+      <section id="series" className="scroll-mt-20 mx-auto max-w-[1320px] px-6 pb-16 pt-14 md:px-10">
         <div className="flex items-end justify-between border-b border-foreground pb-3">
           <h2 className="text-2xl font-bold tracking-tight">The Series <span className="font-accent font-normal text-muted-foreground">— twelve worlds</span></h2>
           <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Select a world</span>
@@ -176,6 +173,7 @@ function Index() {
           Profile and repository data from the public GitHub API (latest 100 repositories). Contribution calendar via github-contributions-api.jogruber.de. Titles are assigned by fixed rules from repository languages and topics — never at random.
         </p>
       </section>
+      <Manifesto />
     </div>
   );
 }

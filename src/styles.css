@@ -51,6 +51,12 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-pop-red: var(--pop-red);
+  --color-pop-blue: var(--pop-blue);
+  --color-pop-yellow: var(--pop-yellow);
+  --color-pop-pink: var(--pop-pink);
+  --color-pop-green: var(--pop-green);
+  --color-pop-cream: var(--pop-cream);
   --color-stage: var(--stage);
   --color-stage-foreground: var(--stage-foreground);
   --color-stage-muted: var(--stage-muted);
@@ -87,6 +93,12 @@
   --border: oklch(0.82 0.02 75);
   --input: oklch(0.82 0.02 75);
   --ring: oklch(0.58 0.19 34);
+  --pop-red: oklch(0.63 0.21 33);
+  --pop-blue: oklch(0.48 0.22 264);
+  --pop-yellow: oklch(0.91 0.18 108);
+  --pop-pink: oklch(0.74 0.17 350);
+  --pop-green: oklch(0.78 0.18 150);
+  --pop-cream: oklch(0.97 0.02 85);
   --stage: oklch(0.2 0.012 60);
   --stage-foreground: oklch(0.95 0.012 82);
   --stage-muted: oklch(0.68 0.02 70);
@@ -173,3 +185,18 @@
   .card-back { transform: rotateY(180deg); }
   @media (prefers-reduced-motion: reduce) { .card-inner { transition: none; } }
 }
+
+@utility brutal-box { border: 2px solid var(--foreground); box-shadow: 5px 5px 0 var(--foreground); }
+@utility brutal-btn {
+  border: 2px solid var(--foreground); background: var(--foreground); color: var(--background);
+  font-weight: 700; box-shadow: 5px 5px 0 var(--pop-red); transition: transform 150ms, box-shadow 150ms;
+  &:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--pop-blue); }
+}
+@keyframes marquee { to { transform: translateX(-50%); } }
+@keyframes floaty { 50% { transform: translateY(-10px); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@utility marquee { animation: marquee 30s linear infinite; }
+@utility float-slow { animation: floaty 6s ease-in-out infinite; }
+@utility float-fast { animation: floaty 4.5s ease-in-out infinite 0.5s; }
+@utility spin-slow { animation: spin 18s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .marquee, .float-slow, .float-fast, .spin-slow { animation: none; } }
