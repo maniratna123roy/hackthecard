@@ -119,7 +119,7 @@ function Index() {
             <div className="pointer-events-none absolute left-5 top-4 text-[11px] uppercase tracking-[0.22em] text-stage-muted">{theme.name}</div>
             <div className="pointer-events-none absolute right-5 top-4 font-accent text-sm text-stage-muted">{theme.tagline}</div>
             <div ref={stageRef} className="w-full max-w-[780px]">
-              {q.isFetching ? (
+              {q.isFetching || !q.data && !q.isError ? (
                 <CardLoader width={576 * scale} height={Math.max(402 * scale, 360)} />
               ) : q.isError ? (
                 <div className="mx-auto max-w-sm text-center text-stage-foreground">
@@ -137,8 +137,8 @@ function Index() {
                     style={{ width: 576, height: 402, transform: `scale(${scale})` }}
                   >
                     <div className="card-inner" data-flipped={flipped}>
-                      <div className="card-face"><CardFront d={q.data} theme={theme} ref={frontRef} /></div>
-                      <div className="card-face card-back"><CardBack d={q.data} theme={theme} ref={backRef} /></div>
+                      <div className="card-face"><CardFront d={q.data!} theme={theme} ref={frontRef} /></div>
+                      <div className="card-face card-back"><CardBack d={q.data!} theme={theme} ref={backRef} /></div>
                     </div>
                   </button>
                 </div>
