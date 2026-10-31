@@ -66,7 +66,7 @@ function Shell({ theme, children, dim }: { theme: CardTheme; children?: ReactNod
   return (
     <div style={{ width: W + 16, height: H + 16, padding: 8, borderRadius: 24, background: theme.frame, position: "relative", fontFamily: "'Google Sans', 'Instrument Sans', system-ui, sans-serif" }}>
       <div style={{ position: "relative", width: W, height: H, borderRadius: 16, overflow: "hidden", background: theme.panel }}>
-        <ThemeArt theme={theme.id} layer="back" dim={dim} className="absolute inset-0 h-full w-full" />
+        <ThemeArt theme={theme.id} layer="back" dim={dim ?? 0} className="absolute inset-0 h-full w-full" />
         {children}
         <div style={{ position: "absolute", inset: 5, borderRadius: 12, border: `1px solid ${hex(theme.line, 0.7)}`, pointerEvents: "none" }} />
         <Corners color={theme.line} />
