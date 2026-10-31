@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { toPng } from "html-to-image";
 import { fetchDeveloper } from "@/lib/github";
 import { THEMES } from "@/lib/themes";
-import { CardBack, CardFront } from "@/components/card/CollectibleCard";
+import { CardBack, CardFront, PocketCard } from "@/components/card/CollectibleCard";
 import { Hero, Manifesto, SiteHeader } from "@/components/landing/Hero";
+import { CardLoader } from "@/components/card/CardLoader";
 import { ThemeArt } from "@/components/card/ThemeArt";
 
 export const Route = createFileRoute("/")({
@@ -46,14 +47,15 @@ function Index() {
   const { ref: stageRef, scale } = useCardScale();
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
+  const pocketRef = useRef<HTMLDivElement>(null);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (input.trim()) { setUser(input.trim()); setFlipped(false); }
   };
 
-  const exportSide = async (side: "front" | "back") => {
-    const node = side === "front" ? frontRef.current : backRef.current;
+  const exportSide = async (side: "front" | "back" | "pocket") => {
+    const node = side === "front" ? frontRef.current : side === "back" ? backRef.current : pocketRef.current;
     if (!node || !q.data) return;
     setExporting(side);
     try {
@@ -100,7 +102,7 @@ function Index() {
             <div className="mt-8 border-t border-border pt-5">
               <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Export</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {(["front", "back"] as const).map((s) => (
+                {(["front", "back", "pocket"] as const).map((s) => (
                   <button key={s} onClick={() => exportSide(s)} disabled={!!exporting}
                     className="border border-foreground px-4 py-2 text-sm font-medium transition-colors hover:bg-foreground hover:text-background disabled:opacity-50">
                     {exporting === s ? "Rendering…" : `Download ${s} · PNG`}
@@ -117,8 +119,8 @@ function Index() {
             <div className="pointer-events-none absolute left-5 top-4 text-[11px] uppercase tracking-[0.22em] text-stage-muted">{theme.name}</div>
             <div className="pointer-events-none absolute right-5 top-4 font-accent text-sm text-stage-muted">{theme.tagline}</div>
             <div ref={stageRef} className="w-full max-w-[780px]">
-              {q.isPending ? (
-                <div className="mx-auto animate-pulse rounded-[24px] bg-stage-muted/20" style={{ width: 576 * scale, height: 402 * scale }} />
+              {q.isFetching ? (
+                <CardLoader width={576 * scale} height={Math.max(402 * scale, 360)} />
               ) : q.isError ? (
                 <div className="mx-auto max-w-sm text-center text-stage-foreground">
                   <p className="font-accent text-2xl">This card couldn't be printed.</p>
@@ -142,7 +144,13 @@ function Index() {
                 </div>
               )}
             </div>
-            {q.data && <p className="mt-6 text-xs text-stage-muted">Click or press Enter to turn the card over.</p>}
+            {q.data && !q.isFetching && <p className="mt-6 text-xs text-stage-muted">Click or press Enter to turn the card over.</p>}
+            {q.data && !q.isFetching && (
+              <div className="mt-10 flex flex-col items-center">
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.22em] text-stage-muted">Pocket edition</p>
+                <PocketCard d={q.data} theme={theme} ref={pocketRef} />
+              </div>
+            )}
           </div>
         </section>
       </main>

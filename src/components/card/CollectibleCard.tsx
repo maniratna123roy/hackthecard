@@ -177,7 +177,7 @@ export const CardBack = forwardRef<HTMLDivElement, { d: DeveloperData; theme: Ca
   const block: CSSProperties = { display: "flex", flexDirection: "column", gap: 4 };
   return (
     <div ref={ref}>
-      <Shell theme={theme} dim={0.15}>
+      <Shell theme={theme}>
         <div style={{ position: "absolute", left: 22, top: 16, right: 22, display: "flex", justifyContent: "space-between", alignItems: "flex-end", color: theme.onArt, textShadow: `0 1px 2px ${hex(theme.frame, 0.6)}` }}>
           <div>
             <div style={{ fontSize: 7, letterSpacing: "0.24em", fontWeight: 600 }}>BEHIND THE CODE · T{theme.no}</div>
@@ -235,6 +235,41 @@ export const CardBack = forwardRef<HTMLDivElement, { d: DeveloperData; theme: Ca
           </div>
         </Plate>
       </Shell>
+    </div>
+  );
+});
+
+export const PocketCard = forwardRef<HTMLDivElement, { d: DeveloperData; theme: CardTheme }>(function PocketCard({ d, theme }, ref) {
+  const PW = 320, PH = 204;
+  const recent = d.contributions ? [...d.contributions].sort((a, b) => a.date.localeCompare(b.date)).slice(-26 * 7) : [];
+  return (
+    <div ref={ref} style={{ width: PW + 12, height: PH + 12, padding: 6, borderRadius: 18, background: theme.frame, fontFamily: "'Google Sans', system-ui, sans-serif" }}>
+      <div style={{ position: "relative", width: PW, height: PH, borderRadius: 13, overflow: "hidden" }}>
+        <ThemeArt theme={theme.id} layer="back" className="absolute inset-0 h-full w-full" />
+        <div style={{ position: "absolute", inset: 4, borderRadius: 10, border: `1px solid ${theme.line}`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", left: 12, top: 12, display: "flex", gap: 8, alignItems: "center", color: theme.onArt, textShadow: `0 1px 2px ${hex(theme.ink, 0.5)}` }}>
+          <img src={d.avatar} crossOrigin="anonymous" alt="" style={{ width: 40, height: 40, borderRadius: 8, border: `2px solid ${theme.line}` }} />
+          <div style={{ maxWidth: 190 }}>
+            <div style={{ ...italic, fontSize: 9 }}>{d.classification.title}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
+            <div style={{ fontSize: 8, opacity: 0.9 }}>@{d.login}</div>
+          </div>
+        </div>
+        <div style={{ position: "absolute", right: 12, top: 12, fontSize: 6.5, letterSpacing: "0.18em", fontWeight: 700, color: theme.onArt, textAlign: "right" }}>POCKET<br />T{theme.no}</div>
+        <Plate theme={theme} style={{ left: 10, right: 10, bottom: 10, padding: "8px 10px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            {[["Stars", d.totalStars], ["Repos", d.publicRepos], ["Followers", d.followers], ["Contrib", d.contributionTotal]].map(([k, v]) => (
+              <div key={k as string}><div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1, color: theme.accent }}>{fmt(v as number | null)}</div><Label theme={theme} style={{ fontSize: 6 }}>{k}</Label></div>
+            ))}
+          </div>
+          {recent.length > 0 && (
+            <div style={{ display: "grid", gridTemplateRows: "repeat(7, 4px)", gridAutoFlow: "column", gap: 1, marginTop: 6 }}>
+              {recent.map((c) => <span key={c.date} style={{ width: 4, height: 4, borderRadius: 1, background: theme.heat[Math.min(4, c.level)] }} />)}
+            </div>
+          )}
+          <div style={{ fontSize: 6, color: theme.muted, marginTop: 4, letterSpacing: "0.14em" }}>No. {d.serial} · HACKTHECARD</div>
+        </Plate>
+      </div>
     </div>
   );
 });
