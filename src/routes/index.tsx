@@ -28,7 +28,7 @@ function useCardScale() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setScale(Math.min(1.35, e.contentRect.width / 576)));
+    const ro = new ResizeObserver(([e]) => e && setScale(Math.min(1.35, e.contentRect.width / 576)));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -41,7 +41,7 @@ function Index() {
   const [themeIdx, setThemeIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
-  const theme = THEMES[themeIdx];
+  const theme = THEMES[themeIdx] ?? THEMES[0]!;
   const q = useQuery({ queryKey: ["dev", user], queryFn: () => fetchDeveloper(user), retry: false, staleTime: 5 * 60_000 });
   const { ref: stageRef, scale } = useCardScale();
   const frontRef = useRef<HTMLDivElement>(null);
