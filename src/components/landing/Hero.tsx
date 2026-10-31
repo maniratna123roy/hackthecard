@@ -82,8 +82,8 @@ export function Hero({ onGenerate }: { onGenerate: (u: string) => void }) {
               ))}
             </div>
           </div>
-          <div className="spin-slow absolute bottom-0 right-6 grid h-32 w-32 place-items-center rounded-full border-2 border-foreground bg-pop-yellow">
-            <svg viewBox="0 0 100 100" className="absolute inset-0">
+          <div className="absolute bottom-0 right-6 grid h-32 w-32 place-items-center rounded-full border-2 border-foreground bg-pop-yellow">
+            <svg viewBox="0 0 100 100" className="spin-slow absolute inset-0">
               <defs><path id="circ" d="M50,50 m-36,0 a36,36 0 1,1 72,0 a36,36 0 1,1 -72,0" /></defs>
               <text fontSize="9.5" fontWeight="700" letterSpacing="2" fill="var(--foreground)"><textPath href="#circ">AUTHENTIC · COMMIT · VERIFIED ·</textPath></text>
             </svg>
