@@ -99,9 +99,9 @@
   --pop-pink: oklch(0.74 0.17 350);
   --pop-green: oklch(0.78 0.18 150);
   --pop-cream: oklch(0.97 0.02 85);
-  --stage: oklch(0.2 0.012 60);
-  --stage-foreground: oklch(0.95 0.012 82);
-  --stage-muted: oklch(0.68 0.02 70);
+  --stage: oklch(0.985 0.012 95);
+  --stage-foreground: oklch(0.19 0.012 60);
+  --stage-muted: oklch(0.42 0.03 60);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -172,7 +172,10 @@
   body { font-family: var(--font-sans); }
   .stage {
     background-color: var(--stage);
-    background-image: radial-gradient(ellipse at 50% 45%, color-mix(in oklab, var(--stage-foreground) 9%, transparent), transparent 65%);
+    border: 2px solid var(--foreground);
+    box-shadow: 8px 8px 0 var(--pop-yellow);
+    background-image: radial-gradient(color-mix(in oklab, var(--foreground) 14%, transparent) 1px, transparent 1px);
+    background-size: 18px 18px;
   }
   .card-3d { perspective: 1800px; }
   .card-inner {
@@ -181,7 +184,7 @@
     transition: transform 650ms cubic-bezier(0.3, 0.7, 0.2, 1);
   }
   .card-inner[data-flipped="true"] { transform: rotateY(180deg); }
-  .card-face { position: absolute; inset: 0; text-align: left; border-radius: 24px; box-shadow: 0 30px 50px -10px rgb(0 0 0 / 0.55); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .card-face { position: absolute; inset: 0; text-align: left; border-radius: 24px; box-shadow: 0 18px 30px -12px rgb(0 0 0 / 0.3); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
   .card-back { transform: rotateY(180deg); }
   @media (prefers-reduced-motion: reduce) { .card-inner { transition: none; } }
 }
@@ -200,3 +203,17 @@
 @utility float-fast { animation: floaty 4.5s ease-in-out infinite 0.5s; }
 @utility spin-slow { animation: spin 18s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .marquee, .float-slow, .float-fast, .spin-slow { animation: none; } }
+
+@keyframes loader-shuffle {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-46px, -10px) rotate(-10deg); }
+  50% { transform: translate(46px, -6px) rotate(9deg); }
+  75% { transform: translate(0, -16px) rotate(-3deg); }
+}
+@keyframes loader-cell { 0%, 100% { background: var(--pop-cream); } 50% { background: var(--pop-yellow); } }
+@keyframes loader-step { 0%, 100% { background: var(--card); } 40% { background: var(--pop-yellow); } }
+@keyframes loader-dots { 0% { content: ""; } 33% { content: "."; } 66% { content: ".."; } 100% { content: "..."; } }
+@utility loader-card { animation: loader-shuffle 1.8s cubic-bezier(.6,0,.3,1) infinite; }
+@utility loader-cell { animation: loader-cell 1.2s ease-in-out infinite; }
+@utility loader-step { animation: loader-step 2.4s ease-in-out infinite; }
+@utility loader-dots { &::after { content: ""; animation: loader-dots 1.2s steps(1) infinite; } }
