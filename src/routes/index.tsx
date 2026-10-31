@@ -88,7 +88,7 @@ function Index() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SiteHeader />
-      <Hero onGenerate={(u) => { setInput(u); setUser(u); setFlipped(false); }} />
+      <Hero onGenerate={(u) => { setInput(u); setUser(u); setFlipped(false); startHold(); }} />
 
       <main id="generate" className="scroll-mt-20 mx-auto grid max-w-[1320px] gap-10 px-6 pt-16 md:px-10 lg:grid-cols-[minmax(300px,380px)_1fr]">
         <section className="flex flex-col">
@@ -134,7 +134,7 @@ function Index() {
             <div className="pointer-events-none absolute left-5 top-4 text-[11px] uppercase tracking-[0.22em] text-stage-muted">{theme.name}</div>
             <div className="pointer-events-none absolute right-5 top-4 font-accent text-sm text-stage-muted">{theme.tagline}</div>
             <div ref={stageRef} className="w-full max-w-[780px]">
-              {q.isFetching || !q.data && !q.isError ? (
+              {q.isFetching || hold || (!q.data && !q.isError) ? (
                 <CardLoader width={576 * scale} height={Math.max(402 * scale, 360)} />
               ) : q.isError ? (
                 <div className="mx-auto max-w-sm text-center text-stage-foreground">
