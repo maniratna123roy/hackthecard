@@ -2,8 +2,11 @@ import { fetchDeveloperDirect, type DeveloperData, type Repo } from "./github";
 
 export async function fetchDeveloper(username: string): Promise<DeveloperData> {
   const cleanUsername = username.trim().replace(/^@/, "");
+  const baseUrl = import.meta.env.VITE_API_URL
+    ? String(import.meta.env.VITE_API_URL).replace(/\/$/, "")
+    : "";
   try {
-    const res = await fetch(`/api/card/${encodeURIComponent(cleanUsername)}`);
+    const res = await fetch(`${baseUrl}/api/card/${encodeURIComponent(cleanUsername)}`);
     if (res.ok) {
       const card = await res.json();
       // Map the backend Builder Card JSON to DeveloperData
