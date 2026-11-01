@@ -1,14 +1,6 @@
-<!-- LOVABLE:BEGIN -->
-> [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
+# Development Guidelines
 
-- Card artwork is hand-coded SVG per theme in src/components/card/ThemeArt.tsx with palettes in src/lib/themes.ts; card internals use inline styles from theme data so PNG export captures exact colors. Why: data-driven themes render identically on screen and in export.
-- GitHub data is fetched client-side (REST API + public contributions proxy) in src/lib/github.ts; developer titles use fixed rules, never randomness. Why: no backend needed and data stays verifiable.
-- Card signature marks and activity highlights use browser-safe pure helpers in src/lib/card-details.ts; marks are decorative, not verification or QR codes. Why: personal details stay deterministic and export identically without inventing achievements.
+- **Card Artwork & Themes**: Hand-coded SVG per theme in `frontend/src/components/card/ThemeArt.tsx` with palettes in `frontend/src/lib/themes.ts`. Card internals use inline styles from theme data so PNG export captures exact colors identically on screen and in high-resolution downloads.
+- **GitHub Intelligence**: Fetched via the backend API (`backend/src/services/githubService.ts`) with a client-side fallback in `frontend/src/lib/github.ts`. Developer titles (e.g., The Full-Stack Architect, AI Innovator, Systems Engineer) use deterministic rules based on language shares and repository metadata—never randomness.
+- **Card Signature & Details**: Deterministic personal code signature marks and activity highlights use pure browser-safe helpers in `frontend/src/lib/card-details.ts`. Marks are aesthetic decorative representations without inventing false achievements.
+- **Project Structure**: Cleanly partitioned into `frontend/` (Vite, React 19, Tailwind CSS v4) and `backend/` (Express API server with optional `GITHUB_TOKEN` support).
