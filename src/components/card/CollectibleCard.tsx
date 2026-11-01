@@ -2,6 +2,7 @@ import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import { ThemeArt, W, H } from "./ThemeArt";
 import type { CardTheme } from "@/lib/themes";
 import { LANG_COLORS, type DeveloperData, type ContributionDay } from "@/lib/github";
+import { activityHighlights, signatureCells } from "@/lib/card-details";
 
 const fmt = (n: number | null | undefined) =>
   n == null ? "—" : n >= 10000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1)}k` : n.toLocaleString("en-US");
@@ -77,6 +78,26 @@ function Shell({ theme, children, dim }: { theme: CardTheme; children?: ReactNod
 
 const italic: CSSProperties = { fontFamily: "'Instrument Sans', serif", fontStyle: "italic" };
 
+function CodeSignature({ d, theme, compact = false }: { d: DeveloperData; theme: CardTheme; compact?: boolean }) {
+  const cells = signatureCells(d.login);
+  const highlights = activityHighlights(d.contributions);
+  return (
+    <Plate theme={theme} style={{ left: compact ? 10 : 14, right: compact ? 10 : 14, top: compact ? 64 : 126, height: compact ? 34 : 44, padding: compact ? "4px 8px" : "5px 10px", display: "flex", alignItems: "center", gap: compact ? 7 : 10 }}>
+      <svg aria-label={`Code signature for ${d.login}`} width={compact ? 24 : 32} height={compact ? 24 : 32} viewBox="0 0 29 29" style={{ flexShrink: 0 }}>
+        {cells.map((filled, i) => <rect key={i} x={(i % 5) * 6} y={Math.floor(i / 5) * 6} width={5} height={5} rx={0.8} fill={filled ? theme.accent : theme.heat[1]} />)}
+      </svg>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <Label theme={theme} style={{ fontSize: compact ? 5.5 : 6.5 }}>Code signature / T{theme.no}</Label>
+        <div style={{ fontSize: compact ? 8 : 10, fontWeight: 700, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.languages[0]?.name ?? "Open source"} · EST. {d.createdAt.slice(0, 4)}</div>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <Label theme={theme} style={{ fontSize: compact ? 5.5 : 6.5 }}>{highlights ? "Active days / yr" : "Identity edition"}</Label>
+        <div style={{ fontSize: compact ? 10 : 14, fontWeight: 700, color: theme.accent, marginTop: 1 }}>{highlights ? highlights.activeDays : d.serial}</div>
+      </div>
+    </Plate>
+  );
+}
+
 export const CardFront = forwardRef<HTMLDivElement, { d: DeveloperData; theme: CardTheme }>(function CardFront({ d, theme }, ref) {
   const shadow = theme.onArt.startsWith("#f") ? `0 1px 3px ${hex(theme.ink, 0.7)}` : `0 1px 3px #ffffffcc`;
   return (
@@ -108,6 +129,7 @@ export const CardFront = forwardRef<HTMLDivElement, { d: DeveloperData; theme: C
             </div>
           ))}
         </Plate>
+        <CodeSignature d={d} theme={theme} />
         {/* info plate */}
         <Plate theme={theme} style={{ left: 14, right: 14, bottom: 14, height: 190, padding: "10px 12px" }}>
           <div style={{ display: "flex", gap: 12 }}>
@@ -175,6 +197,7 @@ export const CardBack = forwardRef<HTMLDivElement, { d: DeveloperData; theme: Ca
   const joined = new Date(d.createdAt);
   const years = Math.max(0, Math.floor((Date.now() - joined.getTime()) / (365.25 * 864e5)));
   const block: CSSProperties = { display: "flex", flexDirection: "column", gap: 4 };
+  const highlights = activityHighlights(d.contributions);
   return (
     <div ref={ref}>
       <Shell theme={theme}>
@@ -229,8 +252,12 @@ export const CardBack = forwardRef<HTMLDivElement, { d: DeveloperData; theme: Ca
                 <span style={{ color: theme.muted, whiteSpace: "nowrap" }}>{new Date(r.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
               </div>
             ))}
-            <div style={{ marginTop: "auto", fontSize: 7.5 }}>
-              <span style={{ color: theme.muted }}>Last year </span><b>{fmt(d.contributionTotal)}</b> contributions
+            <div style={{ marginTop: "auto", fontSize: 7.5, borderTop: `1px solid ${hex(theme.line, 0.35)}`, paddingTop: 6 }}>
+              <Label theme={theme}>Personal best · last year</Label>
+              {highlights ? <>
+                <div style={{ fontSize: 20, fontWeight: 700, color: theme.accent, marginTop: 2 }}>{fmt(highlights.peak.count)}<span style={{ fontSize: 7, color: theme.muted }}> in one day</span></div>
+                <div style={{ fontSize: 7, color: theme.muted }}>{new Date(highlights.peak.date + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })} · {highlights.activeDays} active days</div>
+              </> : <div style={{ marginTop: 3, color: theme.muted }}>Activity calendar unavailable</div>}
             </div>
           </div>
         </Plate>
@@ -256,6 +283,7 @@ export const PocketCard = forwardRef<HTMLDivElement, { d: DeveloperData; theme: 
           </div>
         </div>
         <div style={{ position: "absolute", right: 12, top: 12, fontSize: 6.5, letterSpacing: "0.18em", fontWeight: 700, color: theme.onArt, textAlign: "right" }}>POCKET<br />T{theme.no}</div>
+        <CodeSignature d={d} theme={theme} compact />
         <Plate theme={theme} style={{ left: 10, right: 10, bottom: 10, padding: "8px 10px" }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             {[["Stars", d.totalStars], ["Repos", d.publicRepos], ["Followers", d.followers], ["Contrib", d.contributionTotal]].map(([k, v]) => (
