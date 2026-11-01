@@ -66,14 +66,14 @@ export function Hero({ onGenerate }: { onGenerate: (u: string) => void }) {
         </div>
 
         <div className="relative mx-auto h-[440px] w-full max-w-[560px]" aria-hidden>
-          <div className="float-slow absolute right-0 top-0 h-[300px] w-[78%] border-2 border-foreground bg-pop-blue shadow-[8px_8px_0_var(--foreground)]">
+          <div className="absolute right-0 top-0 h-[300px] w-[78%] border-2 border-foreground bg-pop-blue shadow-[8px_8px_0_var(--foreground)]">
             <div className="absolute left-10 top-8 text-4xl font-bold text-pop-cream">&lt;/&gt;</div>
             {Array.from({ length: 7 }).map((_, i) => <div key={i} className="absolute left-10 right-10 h-px bg-pop-cream/40" style={{ top: 50 + i * 34 }} />)}
             <svg className="absolute inset-0 h-full w-full" viewBox="0 0 400 300" preserveAspectRatio="none">
               <polyline points="120,260 200,200 250,90 340,55" fill="none" stroke="var(--pop-yellow)" strokeWidth="7" />
             </svg>
           </div>
-          <div className="float-fast absolute bottom-6 left-0 w-[66%] border-2 border-foreground bg-pop-red p-5 shadow-[8px_8px_0_var(--foreground)]">
+          <div className="absolute bottom-6 left-0 w-[66%] border-2 border-foreground bg-pop-red p-5 shadow-[8px_8px_0_var(--foreground)]">
             <div className="text-xs font-bold tracking-[0.2em] text-pop-cream">SERIAL</div>
             <div className="text-3xl font-bold text-pop-cream">HTC-00001</div>
             <div className="mt-4 grid grid-cols-7 gap-1.5">

@@ -11,3 +11,4 @@
 
 - Card artwork is hand-coded SVG per theme in src/components/card/ThemeArt.tsx with palettes in src/lib/themes.ts; card internals use inline styles from theme data so PNG export captures exact colors. Why: data-driven themes render identically on screen and in export.
 - GitHub data is fetched client-side (REST API + public contributions proxy) in src/lib/github.ts; developer titles use fixed rules, never randomness. Why: no backend needed and data stays verifiable.
+- Card signature marks and activity highlights use browser-safe pure helpers in src/lib/card-details.ts; marks are decorative, not verification or QR codes. Why: personal details stay deterministic and export identically without inventing achievements.
