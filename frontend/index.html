@@ -5,7 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>HackTheCard — Your GitHub, printed as a collectible</title>
     <meta name="description" content="Turn any public GitHub profile into an illustrated collectible card across twelve hand-built worlds." />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <!-- Favicons with browser dark/light theme switching -->
+    <link id="favicon-dark" rel="icon" type="image/png" href="/favicon-dark.png" media="(prefers-color-scheme: dark)" />
+    <link id="favicon-light" rel="icon" type="image/png" href="/favicon-light.png" media="(prefers-color-scheme: light)" />
+    <link id="favicon-default" rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="/favicon-dark.png" />
+    <script>
+      (function() {
+        const darkPng = "/favicon-dark.png";
+        const lightPng = "/favicon-light.png";
+        const darkIco = "/favicon-dark.ico";
+        const lightIco = "/favicon-light.ico";
+        const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+        function applyFavicon(isDark) {
+          const defaultIcon = document.getElementById("favicon-default");
+          const appleIcon = document.getElementById("apple-touch-icon");
+          if (defaultIcon) {
+            defaultIcon.href = isDark ? darkIco : lightIco;
+          }
+          if (appleIcon) {
+            appleIcon.href = isDark ? darkPng : lightPng;
+          }
+        }
+
+        applyFavicon(darkQuery.matches);
+        if (typeof darkQuery.addEventListener === "function") {
+          darkQuery.addEventListener("change", function(e) {
+            applyFavicon(e.matches);
+          });
+        } else if (typeof darkQuery.addListener === "function") {
+          darkQuery.addListener(function(e) {
+            applyFavicon(e.matches);
+          });
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=Instrument+Serif:ital@0;1&display=swap" />
