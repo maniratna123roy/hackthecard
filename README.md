@@ -125,89 +125,41 @@ If the Express backend is offline, unconfigured, or throttled, the frontend auto
 ├── backend/
 │   ├── src/
 │   │   ├── services/
-│   │   │   └── card.ts           # Card generation orchestrator, archetype classifier, streaks
-│   │   ├── activity.ts           # 30-day activity window & event aggregation
-│   │   ├── app.ts                # Express app, middleware, routes (/api/card/:username, /api/health)
-│   │   ├── cache.ts              # In-memory FIFO bounded TTL cache (500 entries)
-│   │   ├── config.ts             # Scoring weights & algorithmic parameters
-│   │   ├── errors.ts             # Custom HttpError class
-│   │   ├── github.ts             # Resilient GitHub API client with rate limit handling
-│   │   ├── languages.ts          # Parallel repo language fetch & byte-share aggregation
-│   │   ├── ranking.ts            # Multi-factor repository scoring & sorting algorithm
-│   │   └── server.ts             # Entry point with dotenv/config & startup rate limit check
+│   │   │   └── card.ts
+│   │   ├── activity.ts
+│   │   ├── app.ts
+│   │   ├── cache.ts
+│   │   ├── config.ts
+│   │   ├── errors.ts
+│   │   ├── github.ts
+│   │   ├── languages.ts
+│   │   ├── ranking.ts
+│   │   └── server.ts
 │   ├── package.json
 │   └── tsconfig.json
 │
 ├── frontend/
-│   ├── public/                   # Favicons & static assets
+│   ├── public/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── card/             # CollectibleCard, ThemeArt, CardLoader
-│   │   │   └── landing/          # Hero, SiteHeader, Manifesto, PrivacyModal
+│   │   │   ├── card/
+│   │   │   └── landing/
 │   │   ├── lib/
-│   │   │   ├── api.ts            # Backend API client with offline fallback
-│   │   │   ├── card-details.ts   # Deterministic signature & activity helpers
-│   │   │   ├── github.ts         # Types, palettes, fallback client fetch
-│   │   │   ├── themes.ts         # 12 thematic color & art configurations
+│   │   │   ├── api.ts
+│   │   │   ├── card-details.ts
+│   │   │   ├── github.ts
+│   │   │   ├── themes.ts
 │   │   │   └── utils.ts
-│   │   ├── App.tsx               # Main application component
-│   │   ├── main.tsx              # React DOM mounting
-│   │   └── styles.css            # Tailwind CSS v4 & brutalist theme system
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── styles.css
 │   ├── index.html
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── vite.config.ts
 │
-├── BACKEND.md                    # Comprehensive backend architecture & interview guide
-├── AGENTS.md                     # Agent development guidelines
-├── package.json                  # Root workspace scripts
+├── BACKEND.md
+├── AGENTS.md
+├── package.json
 └── README.md
-```
-
----
-
-## Getting Started
-
-### Prerequisites
-- Node.js (v18+ recommended, tested with v24)
-- npm
-
-### Installation
-
-From the project root:
-
-```bash
-# Install frontend and backend dependencies
-npm run install:all
-```
-
-### Running in Development
-
-Run both or either service:
-
-```bash
-# Start frontend (Vite on http://localhost:5173)
-npm run dev:frontend
-
-# Start backend (Express on http://localhost:3001)
-npm run dev:backend
-```
-
-> **Note**: The frontend includes an automatic fallback mechanism. If the backend is not running, it can query public GitHub endpoints directly from the browser.
-
-### Production Build
-
-```bash
-npm run build
-```
-
----
-
-## Optional Environment Variables
-
-In `backend/.env`:
-
-```env
-PORT=3001
-GITHUB_TOKEN=your_personal_access_token # Increases GitHub rate limit from 60 to 5000 req/hr
 ```
