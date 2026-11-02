@@ -113,13 +113,29 @@ function calcStreaks(days: { date: string; count: number }[], today = new Date()
   return { current, longest };
 }
 
+export interface GitHubUser {
+  login: string;
+  id: number;
+  name: string | null;
+  avatar_url: string;
+  bio: string | null;
+  location: string | null;
+  followers: number;
+  following: number;
+  public_repos: number;
+  html_url: string;
+  created_at: string;
+}
+
 export async function buildCard(username: string): Promise<CardData> {
-  const u = await gh<any>(`/users/${encodeURIComponent(username)}`);
+  const u = await gh<GitHubUser>(`/users/${encodeURIComponent(username)}`);
 
   const [repos, events, contrib] = await Promise.all([
     gh<RawRepo[]>(`/users/${u.login}/repos?per_page=100&sort=pushed`),
     gh<GitHubEvent[]>(`/users/${u.login}/events/public?per_page=100`).catch(() => []),
-    fetch(`https://github-contributions-api.jogruber.de/v4/${u.login}?y=last`)
+    fetch(`https://github-contributions-api.jogruber.de/v4/${u.login}?y=last`, {
+      signal: AbortSignal.timeout(5000),
+    })
       .then((r) => (r.ok ? (r.json() as Promise<any>) : null))
       .catch(() => null),
   ]);

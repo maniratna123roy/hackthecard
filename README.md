@@ -21,40 +21,42 @@
 ```
 ├── backend/
 │   ├── src/
-│   │   ├── routes/
-│   │   │   ├── developer.ts      # GET /api/developer/:username
-│   │   │   └── health.ts         # GET /api/health
 │   │   ├── services/
-│   │   │   ├── githubService.ts  # GitHub REST & contribution parsing
-│   │   │   └── githubService.test.ts
-│   │   └── server.ts             # Express server entry point
+│   │   │   └── card.ts           # Card generation orchestrator, archetype classifier, streaks
+│   │   ├── activity.ts           # 30-day activity window & event aggregation
+│   │   ├── app.ts                # Express app, middleware, routes (/api/card/:username, /api/health)
+│   │   ├── cache.ts              # In-memory FIFO bounded TTL cache (500 entries)
+│   │   ├── config.ts             # Scoring weights & algorithmic parameters
+│   │   ├── errors.ts             # Custom HttpError class
+│   │   ├── github.ts             # Resilient GitHub API client with rate limit handling
+│   │   ├── languages.ts          # Parallel repo language fetch & byte-share aggregation
+│   │   ├── ranking.ts            # Multi-factor repository scoring & sorting algorithm
+│   │   └── server.ts             # Entry point with dotenv/config & startup rate limit check
 │   ├── package.json
-│   ├── tsconfig.json
-│   └── vitest.config.ts
+│   └── tsconfig.json
 │
 ├── frontend/
-│   ├── public/                   # Favicon & robot assets
+│   ├── public/                   # Favicons & static assets
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── card/             # CollectibleCard, ThemeArt, CardLoader
-│   │   │   └── landing/          # Hero, SiteHeader, Manifesto
+│   │   │   └── landing/          # Hero, SiteHeader, Manifesto, PrivacyModal
 │   │   ├── lib/
 │   │   │   ├── api.ts            # Backend API client with offline fallback
 │   │   │   ├── card-details.ts   # Deterministic signature & activity helpers
 │   │   │   ├── github.ts         # Types, palettes, fallback client fetch
 │   │   │   ├── themes.ts         # 12 thematic color & art configurations
 │   │   │   └── utils.ts
-│   │   ├── test/                 # Component and unit tests
 │   │   ├── App.tsx               # Main application component
 │   │   ├── main.tsx              # React DOM mounting
 │   │   └── styles.css            # Tailwind CSS v4 & brutalist theme system
 │   ├── index.html
 │   ├── package.json
 │   ├── tsconfig.json
-│   ├── vite.config.ts
-│   └── vitest.config.ts
+│   └── vite.config.ts
 │
-├── project.md                    # Detailed documentation of every file and code unit
+├── BACKEND.md                    # Comprehensive backend architecture & interview guide
+├── AGENTS.md                     # Agent development guidelines
 ├── package.json                  # Root workspace scripts
 └── README.md
 ```
@@ -89,12 +91,6 @@ npm run dev:backend
 ```
 
 > **Note**: The frontend includes an automatic fallback mechanism. If the backend is not running, it can query public GitHub endpoints directly from the browser.
-
-### Running Tests
-
-```bash
-npm test
-```
 
 ### Production Build
 
