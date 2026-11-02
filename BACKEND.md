@@ -1,485 +1,471 @@
-# HackTheCard — Backend Architecture & Engineering Specification
+# HackTheCard — Backend Engineering & Interview Master Guide
 
-This document provides a comprehensive, deep-dive specification of the **HackTheCard** backend service. It covers the architectural design, algorithmic formulas, networking and resilience mechanisms, caching topology, classification heuristics, and API interface contracts.
+> **Project Purpose:** HackTheCard ingests public GitHub data for any developer and synthesizes it into a high-fidelity, collectible identity card. It turns raw commit histories, repository statistics, language byte splits, and contribution streaks into deterministic developer archetypes and ranked showcase cards.
 
 ---
 
-## 1. Architectural Overview
+## Table of Contents
+1. [The 30-Second Elevator Pitch (For Interviewers)](#1-the-30-second-elevator-pitch)
+2. [System Architecture & Request Lifecycle](#2-system-architecture--request-lifecycle)
+3. [Deep-Dive: The Repository Ranking Algorithm (`ranking.ts`)](#3-deep-dive-the-repository-ranking-algorithm)
+4. [Deep-Dive: Deterministic Developer Archetype Classification (`card.ts`)](#4-deep-dive-developer-archetype-classification)
+5. [Deep-Dive: High-Resilience GitHub Client (`github.ts`)](#5-deep-dive-high-resilience-github-client)
+6. [Deep-Dive: In-Memory Caching System (`cache.ts`)](#6-deep-dive-in-memory-caching-system)
+7. [Deep-Dive: Language Aggregation Engine (`languages.ts`)](#7-deep-dive-language-aggregation-engine)
+8. [Deep-Dive: Activity Summarizer & Streak Calculation (`activity.ts`)](#8-deep-dive-activity-summarizer--streak-calculation)
+9. [Defensive Security, Rate Limiting & Error Management (`app.ts`)](#9-defensive-security-rate-limiting--error-management)
+10. [Edge Cases & How They Are Handled](#10-edge-cases--how-they-are-handled)
+11. [Time & Space Complexity Analysis (Big-O)](#11-time--space-complexity-analysis-big-o)
+12. [Top 10 Interview Questions & Model Answers](#12-top-10-interview-questions--model-answers)
 
-The backend is built with **Node.js, Express, and TypeScript** using ES Modules (`NodeNext`). It operates in two deployment modes with zero code changes:
+---
 
-1. **Persistent Node Service** (`backend/src/server.ts`): Long-running Express instance on Node 20+, deployed to platforms like Render, Railway, Fly.io, or Docker. Keeps an in-memory cache warm continuously.
-2. **Serverless Function** (`api/index.ts`): Ephemeral invocation via Vercel Serverless Functions, where requests are routed to the Express application via Vercel's rewrite engine.
+## 1. The 30-Second Elevator Pitch
+
+> *"HackTheCard is a full-stack TypeScript application that transforms public GitHub profiles into collectible developer identity cards. On the backend, I designed an Express service that can run either as a persistent Node server or as an ephemeral Vercel Serverless Function.*
+>
+> *The core technical challenges were: First, designing a multi-factor ranking algorithm using logarithmic star scaling and exponential recency decay to surface a developer's best work rather than just their most starred ancient repo. Second, building a deterministic archetype classifier based on language shares and topics. Third, ensuring high resilience against GitHub API rate limits using an in-memory TTL cache, bounded capacity evictions, and `Promise.allSettled` parallelization so a single downstream failure never crashes the user's card."*
+
+---
+
+## 2. System Architecture & Request Lifecycle
 
 ```
-                          ┌──────────────────────────┐
-                          │   Client / Frontend      │
-                          └─────────────┬────────────┘
-                                        │
-                                        ▼
-                      ┌───────────────────────────────────┐
-                      │    Express Router (/api)          │
-                      │  - CORS (ALLOWED_ORIGIN)          │
-                      │  - Rate Limiter (30 req/min/IP)   │
-                      │  - Username Regex Validator       │
-                      └─────────────────┬─────────────────┘
-                                        │
-                         ┌──────────────┴──────────────┐
-                         ▼                             ▼
-                 [ Cache Hit ? ]                 [ Cache Miss ]
-                 Return 200 JSON                       │
-                 (meta.cached: true)                   ▼
-                                            ┌─────────────────────┐
-                                            │ card.ts (buildCard) │
-                                            └──────────┬──────────┘
-                                                       │
-         ┌─────────────────────┬───────────────────────┼────────────────────────┐
-         ▼                     ▼                       ▼                        ▼
- ┌───────────────┐     ┌───────────────┐     ┌──────────────────┐     ┌──────────────────┐
- │ User Profile  │     │ 100 Repos     │     │ Public Events    │     │ Contributions    │
- │ GET /users/:u │     │ GET /repos    │     │ GET /events      │     │ jogruber.de API  │
- └───────┬───────┘     └───────┬───────┘     └─────────┬────────┘     └────────┬─────────┘
-         │                     │                       │                       │
-         │                     ▼                       ▼                       ▼
-         │             ┌───────────────┐     ┌──────────────────┐     ┌──────────────────┐
-         │             │  ranking.ts   │     │   activity.ts    │     │  calcStreaks()   │
-         │             │ Multi-factor  │     │ 30-Day Window    │     │ Active & Longest │
-         │             │ Scoring & Top │     │ Event Aggregator │     │ Streak Metrics   │
-         │             └───────┬───────┘     └──────────────────┘     └──────────────────┘
-         │                     │
-         │                     ▼
-         │             ┌───────────────┐
-         │             │ languages.ts  │
-         │             │ Parallel Map  │
-         │             │ Fetch & Share │
-         │             └───────┬───────┘
-         │                     │
-         ▼                     ▼
-  ┌───────────────────────────────────────────────────┐
-  │         classification.ts (classify())            │
-  │     Deterministic Archetype Identification        │
-  └───────────────────────────┬───────────────────────┘
-                              │
-                              ▼
-  ┌───────────────────────────────────────────────────┐
-  │       Serial Generator (serialFor(login, id))     │
-  └───────────────────────────┬───────────────────────┘
-                              │
-                              ▼
-  ┌───────────────────────────────────────────────────┐
-  │       Save to In-Memory TTL Cache (10 mins)       │
-  │               Return 200 JSON                     │
-  └───────────────────────────────────────────────────┘
+[ Client Request ] ──> GET /api/card/:username
+                            │
+                            ▼
+              ┌───────────────────────────┐
+              │  Express App (app.ts)     │
+              │  • Proxy Trust Enabled    │
+              │  • CORS Origin Check      │
+              │  • Rate Limiter (30/min)  │
+              │  • Regex Input Sanitizer  │
+              └─────────────┬─────────────┘
+                            │
+                            ▼
+              ┌───────────────────────────┐
+              │   In-Memory Cache Check   │
+              └─────────────┬─────────────┘
+                            │
+             ┌──────────────┴──────────────┐
+             ▼                             ▼
+       [ Cache Hit ]                 [ Cache Miss ]
+   Return 200 JSON (<10ms)                 │
+   `meta.cached: true`                     ▼
+                               ┌───────────────────────────┐
+                               │ Concurrent Fetch (card.ts)│
+                               │ • User Profile            │
+                               │ • 100 Repositories        │
+                               │ • Public Events           │
+                               │ • Contribution Calendar   │
+                               └─────────────┬─────────────┘
+                                             │
+                                             ▼
+                               ┌───────────────────────────┐
+                               │ Processing Pipeline       │
+                               │ 1. Filter & Rank Repos    │
+                               │ 2. Parallel Language Fetch│
+                               │ 3. 30-Day Activity Window │
+                               │ 4. Deterministic Archetype│
+                               │ 5. Consecutive Streaks    │
+                               │ 6. Serial ID Generation   │
+                               └─────────────┬─────────────┘
+                                             │
+                                             ▼
+                               ┌───────────────────────────┐
+                               │ Save to Cache (10m TTL)   │
+                               │ Append Cache-Control (5m) │
+                               │ Return 200 OK JSON        │
+                               └───────────────────────────┘
 ```
 
----
-
-## 2. Directory & Module Responsibilities
-
-| Path | Primary Responsibility |
-| :--- | :--- |
-| `backend/src/server.ts` | Entry point for standalone Node.js server. Binds Express to `config.PORT`. |
-| `backend/src/app.ts` | Express application instance, middleware registration, route handlers, error handling. |
-| `backend/src/config.ts` | Immutable system configuration parameters, weights, scoring constants, and thresholds. |
-| `backend/src/github.ts` | Low-level GitHub REST API HTTP client with timeouts, token handling, and error mapping. |
-| `backend/src/cache.ts` | Lightweight in-memory TTL cache with capacity bounding to prevent memory leaks. |
-| `backend/src/ranking.ts` | Multi-factor non-linear scoring algorithm to select the developer's most representative repositories. |
-| `backend/src/languages.ts` | Parallel language byte fetcher across top repos and normalized percentage aggregator. |
-| `backend/src/activity.ts` | Rolling 30-day activity window analyzer and event feed parser. |
-| `backend/src/errors.ts` | Standardized `HttpError` class with status codes for centralized error routing. |
-| `backend/src/services/card.ts` | High-level orchestrator that resolves all data sources, computes classifications, and builds `CardData`. |
-| `backend/src/services/githubService.ts` | Self-contained profile fetcher and classifier utility used for integration testing. |
+### Dual-Mode Serving Strategy
+- **Persistent Node Server (`server.ts`)**: Used on platforms like Render, Railway, or Docker. Boots an Express app on `PORT 3001`. The memory state persists continuously across requests, maximizing cache hit ratios.
+- **Serverless Function (`api/index.ts`)**: Deployed to Vercel. Vercel routes `/api/(.*)` directly into the exported Express handler. If the lambda experience a cold start, it recovers gracefully because all functions are stateless.
 
 ---
 
-## 3. Configuration & Tuning Parameters (`config.ts`)
+## 3. Deep-Dive: The Repository Ranking Algorithm (`ranking.ts`)
 
-All behavioral constants are isolated in `config.ts` to prevent magic numbers:
+### Why Not Just Sort By Stars?
+Sorting solely by star count fails in the real world:
+1. **The Stale Project Problem**: A developer might have earned 1,000 stars on an unmaintained utility 8 years ago, while actively building cutting-edge AI or systems software today with fewer stars.
+2. **The Fork Problem**: Forking a 200,000-star repo (like `freeCodeCamp` or `linux`) would make the user look like the creator.
+3. **The Profile README Problem**: GitHub creates a repository named after the username to render profile READMEs; this is documentation, not a software project.
 
+### Step 1: Pool Sanitization
 ```typescript
-export interface Config {
-  PORT: number;               // Default: process.env.PORT || 3001
-  GITHUB_API: string;         // "https://api.github.com"
-  CACHE_TTL_MS: number;       // 600,000 ms (10 minutes)
-  TOP_REPOS: number;          // 5 (number of showcased repositories on card)
-  LANG_SAMPLE: number;        // 10 (top-ranked repos inspected for language stats)
-  ACTIVITY_DAYS: number;      // 30 (rolling window for commit & event analysis)
-  FEED_SIZE: number;          // 5 (number of recent activity feed entries)
-  RECENCY_DECAY_DAYS: number; // 180 (exponential decay half-life factor)
-  SUBSTANCE_KB_CAP: number;   // 500 (repo size in KB representing 100% substance)
-  ARCHIVED_PENALTY: number;   // 0.5 (50% score penalty for archived repositories)
-  WEIGHTS: {
-    stars: number;            // 0.30 (30% weight)
-    recency: number;          // 0.30 (30% weight)
-    substance: number;        // 0.15 (15% weight)
-    presentation: number;     // 0.15 (15% weight)
-    forks: number;            // 0.10 (10% weight)
-  };
-  IGNORED_LANGUAGES: Set<string>; // ["Jupyter Notebook"] (excluded from byte totals)
-}
+let pool = repos.filter(
+  (r) => !r.fork && (!r.owner?.login || r.name.toLowerCase() !== r.owner.login.toLowerCase())
+);
+// Fallback: If an account ONLY has forks, don't crash — allow forks so they still get a card
+if (pool.length === 0) pool = repos;
 ```
 
----
+### Step 2: Non-Linear Mathematical Scoring
+Each repository is evaluated across 5 weighted dimensions on a 0–100 scale:
 
-## 4. GitHub API Client & Resiliency (`github.ts`)
+$$\text{Final Score} = 100 \times \left[ 0.30 \cdot S_{\text{stars}} + 0.30 \cdot S_{\text{recency}} + 0.10 \cdot S_{\text{forks}} + 0.15 \cdot S_{\text{substance}} + 0.15 \cdot S_{\text{presentation}} \right]$$
 
-The `gh<T>(path: string)` function wraps the native `fetch` API with strict production guards:
+#### 1. Logarithmic Star Normalization ($30\%$ weight)
+$$S_{\text{stars}} = \frac{\log_{10}(1 + \text{repo.stargazers\_count})}{\log_{10}(1 + \max(1, \text{maxStars}))}$$
+- **Why Logarithmic?** Star counts follow a power-law distribution. A repo with 10,000 stars is not 10,000 times more relevant than a repo with 10 stars. Logarithmic scaling compresses extreme outliers.
+- **Why relative to `maxStars`?** It normalizes the score to the *individual developer's scale*. For a student whose top repo has 20 stars, a 15-star repo will score appropriately high.
+- **Why `1 + count`?** $\log_{10}(1) = 0$. This prevents $\log_{10}(0) = -\infty$ and ensures zero stars yields a clean 0 score.
 
-### 1. Headers & Protocol Versioning
-Every request transmits:
-- `Accept: application/vnd.github+json`
-- `User-Agent: builder-card`
-- `X-GitHub-Api-Version: 2022-11-28` (locks GitHub API contract)
-- `Authorization: Bearer <token>` (if `process.env.GITHUB_TOKEN` is present)
-
-### 2. Upstream Timeout
-```typescript
-signal: AbortSignal.timeout(8000) // 8-second hard ceiling
-```
-If GitHub hangs or throttles without terminating the TCP socket, the request aborts after 8 seconds and maps to an `HTTP 504 Gateway Timeout`.
-
-### 3. Upstream Status Code Mapping
-- `404` $\to$ `HttpError(404, "GitHub user not found")`
-- `429` or `403` with header `x-ratelimit-remaining === "0"` $\to$ `HttpError(429, "GitHub rate limit reached, try again later")`
-- `403` $\to$ `HttpError(502, "GitHub refused the request")`
-- Any other `!res.ok` $\to$ `HttpError(502, "GitHub error ${res.status}")`
-
----
-
-## 5. Caching System (`cache.ts`)
-
-A zero-dependency in-memory Map handles rapid queries:
-
-### Data Structure
-```typescript
-interface CacheEntry<T> {
-  value: T;
-  expires: number; // Date.now() + ttlMs
-}
-const store = new Map<string, CacheEntry<unknown>>();
-```
-
-### Eviction & Protection Rules
-1. **Passive Expiration on Read (`get`)**: If `Date.now() > entry.expires`, the item is deleted and `null` is returned.
-2. **Hard Capacity Bounding (`set`)**:
-   ```typescript
-   if (store.size >= 500) {
-     const firstKey = store.keys().next().value;
-     if (firstKey !== undefined) store.delete(firstKey);
-   }
-   ```
-   If the cache reaches 500 keys, the oldest key inserted (FIFO order via JavaScript Map iteration order) is evicted. This guarantees memory never exceeds a few megabytes on shared servers.
-3. **HTTP Caching**: All successful responses append `Cache-Control: public, max-age=300` (5 minutes browser cache).
-
----
-
-## 6. Repository Ranking Algorithm (`ranking.ts`)
-
-Simply sorting repositories by stars produces poor results for prolific developers whose most popular repo might be an unmaintained toy project from 2014. HackTheCard implements a multi-factor logarithmic and exponential scoring formula.
-
-### Phase 1: Pool Filtering
-1. **Drop Forks**: Repositories where `repo.fork === true` are excluded so the developer's original creations take precedence.
-2. **Drop Profile README**: Repositories named identically to the owner's username (case-insensitive) are excluded (`r.name.toLowerCase() !== r.owner.login.toLowerCase()`).
-3. **Fallback Guard**: If the developer only owns forks, the pool relaxes back to all repositories so small or contribution-heavy accounts still produce a complete card.
-
-### Phase 2: Relative Normalization
-Star and fork counts span orders of magnitude (from 1 to 150,000+). Using linear scales would drown out active, substantial projects. The algorithm applies logarithmic normalization relative to the user's personal maximum:
-
-$$\text{Stars Score} = \frac{\log_{10}(1 + \text{repo.stargazers\_count})}{\log_{10}(1 + \max(1, \text{maxStars}))}$$
-
-$$\text{Forks Score} = \frac{\log_{10}(1 + \text{repo.forks\_count})}{\log_{10}(1 + \max(1, \text{maxForks}))}$$
-
-*Note: Clamping denominators to $\ge 1$ ensures $\log_{10}(1) = 0$ never causes division by zero.*
-
-### Phase 3: Recency Half-Life Decay
-Recency decays exponentially based on days elapsed since `pushed_at`:
-
+#### 2. Exponential Recency Decay ($30\%$ weight)
 $$\text{days} = \max\left(0, \frac{\text{Date.now()} - \text{pushed\_at}}{86,400,000}\right)$$
+$$S_{\text{recency}} = \exp\left(-\frac{\text{days}}{180}\right)$$
+- Uses half-life decay with $\tau = 180 \text{ days}$ (6 months).
+- Active today: $\exp(0) = 1.0$ ($100\%$ score).
+- Active 6 months ago: $\exp(-1) \approx 0.368$ ($37\%$ score).
+- Active 1 year ago: $\exp(-2) \approx 0.135$ ($14\%$ score).
+- Actively maintained projects are strongly prioritized over abandoned artifacts.
 
-$$\text{Recency Score} = \exp\left(-\frac{\text{days}}{180}\right)$$
+#### 3. Logarithmic Fork Normalization ($10\%$ weight)
+$$S_{\text{forks}} = \frac{\log_{10}(1 + \text{repo.forks\_count})}{\log_{10}(1 + \max(1, \text{maxForks}))}$$
+- Rewards code adoption by other engineers while keeping weight modest ($10\%$).
 
-- Pushed today $\to 1.0$
-- Pushed 6 months ago $\to 0.368$
-- Pushed 1 year ago $\to 0.135$
+#### 4. Code Substance Cap ($15\%$ weight)
+$$S_{\text{substance}} = \min\left(\frac{\text{repo.size\_kb}}{500}, 1.0\right)$$
+- Filters out empty repos, single-file gists, or placeholder configs.
+- Capped at $500 \text{ KB}$ so massive repos with giant binary blobs don't unfairly dominate.
 
-### Phase 4: Substance & Presentation
-- **Substance (Code Volume)**:
-  $$\text{Substance Score} = \min\left(\frac{\text{size\_kb}}{500}, 1.0\right)$$
-  Filters empty repositories or one-line gists. Capped at 500 KB so massive binary bloat does not gain unfair advantage.
-- **Presentation (Documentation Completeness)**:
-  - Has Description: $+0.50$
-  - Has Homepage / Live Demo URL: $+0.25$
-  - Has Topics / Tags: $+0.25$
-
-### Phase 5: Final Score Composite
-$$\text{Raw Score} = 100 \times \left[ 0.30 \cdot \text{Stars} + 0.30 \cdot \text{Recency} + 0.10 \cdot \text{Forks} + 0.15 \cdot \text{Substance} + 0.15 \cdot \text{Presentation} \right]$$
-
-If the repository is archived:
-$$\text{Final Score} = \text{Raw Score} \times 0.50$$
-
-### Phase 6: Deterministic Tie-Breaking
-Repositories are sorted by:
-1. Rounded score to 1 decimal place: `Math.round(b.score * 10) - Math.round(a.score * 10)`
-2. Secondary tie-breaker: `pushed_at` timestamp descending (most recent first).
-
----
-
-## 7. Language Aggregation Engine (`languages.ts`)
-
-GitHub's main repository list only returns the single primary language name. HackTheCard fetches actual language byte distributions:
-
-1. **Parallel Fetch via `Promise.allSettled`**:
-   The backend inspects the top `config.LANG_SAMPLE` (10) ranked repositories simultaneously:
-   ```typescript
-   GET /repos/{owner}/{repo}/languages
-   ```
-   `allSettled` guarantees that if one repository fails (e.g. deleted or private permissions), the remaining repositories proceed uninterrupted.
-2. **Byte Filtering**:
-   Languages in `config.IGNORED_LANGUAGES` (`Jupyter Notebook`) are stripped out because Jupyter Notebook files are massive JSON arrays containing base64 data that artificially skew byte percentages by 80-90%.
-3. **Top 4 + "Other" Aggregation**:
-   - Totals are summed across all sampled repositories.
-   - The top 4 languages are selected.
-   - Any remaining languages (5th and beyond) are consolidated into an `"Other"` category.
-   - Percentages are normalized against total bytes and rounded to 1 decimal place:
-     $$\text{Percent} = \frac{\text{bytes}}{\sum \text{bytes}} \times 100$$
-
----
-
-## 8. Activity Window Analysis (`activity.ts`)
-
-The backend queries the user's public event log:
+#### 5. Presentation Quality ($15\%$ weight)
 ```typescript
-GET /users/{login}/events/public?per_page=100
+const presentation =
+  (repo.description ? 0.5 : 0) +
+  (repo.homepage ? 0.25 : 0) +
+  (repo.topics && repo.topics.length ? 0.25 : 0);
 ```
+- Rewards professional software engineering practices: descriptive summary ($50\%$), live URL/demo ($25\%$), and discoverability tags ($25\%$).
 
-### Metrics Computed over a 30-Day Window:
-- **Commits**: Computed by reading `e.payload.size` or `e.payload.commits.length` from `PushEvent`s.
-- **Pull Requests**: Count of `PullRequestEvent` where `payload.action === "opened"`.
-- **New Repos**: Count of `CreateEvent` where `payload.ref_type === "repository"`.
-- **Repositories Touched**: Size of a unique `Set<string>` containing repository names across all events.
+#### 6. The Archived Penalty
+```typescript
+if (repo.archived) score *= 0.5; // 50% penalty
+```
+- Repositories explicitly marked read-only/archived by their creator receive an automatic $50\%$ penalty.
 
-### Natural Language Event Describers:
-Each event is formatted into clean, concise copy:
-- `PushEvent`: `"Pushed 3 commits to owner/repo"`
-- `PullRequestEvent`: `"Opened a pull request in owner/repo"`
-- `IssuesEvent`: `"Opened an issue in owner/repo"`
-- `CreateEvent`: `"Created repository owner/repo"`
-- `WatchEvent`: `"Starred owner/repo"`
+### Step 3: Deterministic Sorting & Tie-Breaking
+```typescript
+pool.sort((a, b) =>
+  Math.round(b.score * 10) - Math.round(a.score * 10) ||
+  pushedAt(b) - pushedAt(a)
+);
+```
+Scores are compared rounded to 1 decimal place. Any tie is deterministically broken by the most recent `pushed_at` timestamp.
 
 ---
 
-## 9. Developer Archetype Classification (`card.ts`)
+## 4. Deep-Dive: Developer Archetype Classification (`card.ts`)
 
-The classification engine analyzes the developer's repository topics, names, descriptions, and language distribution. Classification is **100% deterministic**—never random.
+Rather than using unpredictable generative AI or random badge generation, developer titles are determined through **deterministic heuristic rules** grounded in language share percentages and repository metadata.
 
-### Lexical & Language Dictionaries:
+### Language Buckets
 - **Frontend**: JavaScript, TypeScript, HTML, CSS, SCSS, Vue, Svelte, Astro, Dart
 - **Backend**: Go, Java, C#, PHP, Ruby, Python, Kotlin, Elixir, Scala
 - **Systems**: C, C++, Rust, Zig, Assembly, Nim
 - **Cloud/Infra**: HCL, Dockerfile, Shell, Nix, Smarty
-- **AI Keywords**: `ai`, `ml`, `llm`, `gpt`, `neural`, `machine-learning`, `deep-learning`, `transformer`, `pytorch`, `tensorflow`, `diffusion`, `rag`
-- **Algorithm Keywords**: `leetcode`, `algorithm`, `competitive`, `codeforces`, `data-structures`, `dsa`
-- **Cloud Keywords**: `kubernetes`, `k8s`, `docker`, `terraform`, `aws`, `gcp`, `azure`, `serverless`, `devops`, `helm`
 
-### Evaluation Cascade (First Match Wins):
+### Keyword Regexes
+- `AI_WORDS`: `\b(ai|ml|llm|gpt|neural|machine[- ]learning|deep[- ]learning|transformer|pytorch|tensorflow|diffusion|rag)\b`
+- `ALGO_WORDS`: `\b(leetcode|algorithm|algorithms|competitive|codeforces|data[- ]structures|dsa)\b`
+- `CLOUD_WORDS`: `\b(kubernetes|k8s|docker|terraform|aws|gcp|azure|serverless|devops|helm)\b`
 
+### The Decision Cascade (Priority Ordered)
+
+```typescript
+function classify(repos: RawRepo[], totalStars: number, forkedCount: number)
 ```
-                       [ Evaluate Repository Pool ]
-                                     │
-                 ┌───────────────────┴───────────────────┐
-                 ▼                                       ▼
-         [ Empty Pool ? ]                        [ Has Repositories ]
-         ├── If forks > 0:                               │
-         │   "Open Source Contributor"                   ▼
-         └── Else:                               [ AI Match ? ]
-             "Developer in Progress"             (≥2 AI repos & ≥20% share)
-                                                 │ ──> YES: "AI Innovator"
-                                                 ▼
-                                         [ Algorithm Match ? ]
-                                         (≥2 algorithm repos)
-                                         │ ──> YES: "Algorithmic Thinker"
-                                         ▼
-                                         [ Cloud Native Match ? ]
-                                         (≥15% cloud langs or ≥3 infra repos)
-                                         │ ──> YES: "Cloud Native Builder"
-                                         ▼
-                                         [ Systems Match ? ]
-                                         (≥40% systems langs)
-                                         │ ──> YES: "Systems Engineer"
-                                         ▼
-                                         [ Full-Stack Match ? ]
-                                         (≥25% frontend AND ≥25% backend)
-                                         │ ──> YES: "The Full-Stack Architect"
-                                         ▼
-                                         [ Frontend Match ? ]
-                                         (≥50% frontend langs)
-                                         │ ──> YES: "Frontend Craftsman"
-                                         ▼
-                                         [ Backend Match ? ]
-                                         (≥50% backend langs)
-                                         │ ──> YES: "Backend Engineer"
-                                         ▼
-                                         [ High Star Count ? ]
-                                         (≥500 stars across repos)
-                                         │ ──> YES: "Open Source Explorer"
-                                         ▼
-                                         [ Fork-Heavy ? ]
-                                         (forks > original repos)
-                                         │ ──> YES: "Open Source Contributor"
-                                         ▼
-                                         [ Default Fallback ]
-                                         "The Problem Solver"
-```
+
+1. **Empty Repositories Guard**:
+   - If user has 0 original repos but `forkedCount > 0` $\to$ **"Open Source Contributor"**
+   - If 0 repos total $\to$ **"Developer in Progress"**
+2. **AI Innovator**: $\ge 2$ repos and $\ge 20\%$ of repos match `AI_WORDS`.
+3. **Algorithmic Thinker**: $\ge 2$ repos match `ALGO_WORDS` in name/description.
+4. **Cloud Native Builder**: $\ge 15\%$ cloud tooling languages OR $\ge 3$ repos tagged with cloud infra keywords.
+5. **Systems Engineer**: $\ge 40\%$ of repos use low-level systems languages (C, C++, Rust, Zig, etc.).
+6. **The Full-Stack Architect**: Balanced polyglot profile with $\ge 25\%$ frontend AND $\ge 25\%$ backend languages.
+7. **Frontend Craftsman**: $\ge 50\%$ frontend language dominance.
+8. **Backend Engineer**: $\ge 50\%$ backend language dominance.
+9. **Open Source Explorer**: Has earned $\ge 500$ cumulative stars across public projects.
+10. **Open Source Contributor**: Forked projects outnumber original creations.
+11. **The Problem Solver**: Balanced generalist fallback with a diverse repository spread.
 
 ---
 
-## 10. Card Metadata & Streak Analysis
+## 5. Deep-Dive: High-Resilience GitHub Client (`github.ts`)
 
-### Serial Number Generation
-A deterministic identifier printed on the collectible card:
+```typescript
+export async function gh<T>(path: string): Promise<T> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "builder-card",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  if (process.env.GITHUB_TOKEN) {
+    headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(config.GITHUB_API + path, {
+      headers,
+      signal: AbortSignal.timeout(8000), // 8-second hard timeout
+    });
+  } catch (_err) {
+    throw new HttpError(504, "GitHub did not respond in time");
+  }
+
+  if (res.status === 404) throw new HttpError(404, "GitHub user not found");
+  if (res.status === 429 || (res.status === 403 && res.headers.get("x-ratelimit-remaining") === "0")) {
+    throw new HttpError(429, "GitHub rate limit reached, try again later");
+  }
+  if (res.status === 403) throw new HttpError(502, "GitHub refused the request");
+  if (!res.ok) throw new HttpError(502, `GitHub error ${res.status}`);
+
+  return res.json() as Promise<T>;
+}
+```
+
+### Key Engineering Decisions:
+1. **API Version Locking**: Pins `X-GitHub-Api-Version: 2022-11-28` to guard against breaking changes from GitHub's REST API.
+2. **`AbortSignal.timeout(8000)`**: Network calls will not hang the Node.js event loop indefinitely. If GitHub stalls, it cleanly cancels the socket and throws `504 Gateway Timeout`.
+3. **Rate Limit Detection**: GitHub communicates throttling either via status `429` OR status `403` with header `x-ratelimit-remaining: 0`. Both cases are unified into a user-friendly `429` status.
+4. **Token Agnostic**: Works without authentication in development (60 requests/hr per IP) and seamlessly switches to token authentication (5,000 requests/hr) when `GITHUB_TOKEN` is injected.
+
+---
+
+## 6. Deep-Dive: In-Memory Caching System (`cache.ts`)
+
+```typescript
+interface CacheEntry<T> {
+  value: T;
+  expires: number;
+}
+const store = new Map<string, CacheEntry<unknown>>();
+```
+
+### Why a Custom Map Instead of Redis or an External Cache?
+- **Zero Infrastructure Overhead**: No Redis container or external network hop required for a read-heavy identity card application.
+- **Latency**: In-memory retrieval takes $< 0.1 \text{ ms}$ (pure memory pointer dereference).
+- **Graceful Eviction**:
+  ```typescript
+  export function set<T>(key: string, value: T, ttlMs: number): void {
+    if (store.size >= 500) {
+      const firstKey = store.keys().next().value;
+      if (firstKey !== undefined) store.delete(firstKey);
+    }
+    store.set(key, { value, expires: Date.now() + ttlMs });
+  }
+  ```
+  JavaScript Maps iterate in insertion order. When the cache hits 500 entries, evicting `store.keys().next().value` performs a **$O(1)$ FIFO eviction**, bounding RAM usage to under ~10 MB.
+- **Lazy Expiration**: On `get(key)`, if `Date.now() > entry.expires`, it deletes the stale key and returns `null`.
+
+---
+
+## 7. Deep-Dive: Language Aggregation Engine (`languages.ts`)
+
+### Parallel Language Byte Fetching
+```typescript
+export async function fetchLanguageMaps(repos: RawRepo[]): Promise<Record<string, number>[]> {
+  const settled = await Promise.allSettled(
+    repos.map((r) => gh<Record<string, number>>(`/repos/${r.owner.login}/${r.name}/languages`))
+  );
+  return settled
+    .filter((s): s is PromiseFulfilledResult<Record<string, number>> => s.status === "fulfilled")
+    .map((s) => s.value);
+}
+```
+
+### Why `Promise.allSettled` Over `Promise.all`?
+If a developer has 10 repos and 1 of them was deleted, moved, or turned private mid-operation:
+- `Promise.all` would reject immediately, failing the entire card request.
+- `Promise.allSettled` allows 9 successful responses to be aggregated while silently dropping the single failure.
+
+### Normalization and Noise Filtering
+1. **The Jupyter Notebook Problem**: Repositories containing Jupyter Notebooks report millions of bytes of JSON and embedded base64 plots, skewing language stats by 80–90%. `config.IGNORED_LANGUAGES.has("Jupyter Notebook")` drops this noise.
+2. **Top 4 + "Other" Consolidation**: Languages ranked 5th and below are summed into an `"Other"` category to prevent UI clutter.
+3. **Percentage Rounding**: Rounded to 1 decimal place (`Math.round(percent * 10) / 10`).
+
+---
+
+## 8. Deep-Dive: Activity Summarizer & Streak Calculation
+
+### Rolling 30-Day Activity Window (`activity.ts`)
+- Queries GitHub's `/events/public`.
+- Filters events within `cutoff = now - 30 * 86400000`.
+- **Commit Extraction**: Push events on GitHub don't store commits linearly. The parser checks `payload.size ?? payload.commits?.length ?? 1`.
+- **Pull Requests**: Increments only when `payload.action === "opened"` (ignoring close/edit noise).
+
+### Streak Calculation (`calcStreaks`)
+```typescript
+function calcStreaks(days: { date: string; count: number }[], today = new Date().toISOString().slice(0, 10)) {
+  const sorted = days.filter((d) => d.date <= today).sort((a, b) => a.date.localeCompare(b.date));
+  let longest = 0, run = 0;
+  for (const d of sorted) {
+    run = d.count > 0 ? run + 1 : 0;
+    longest = Math.max(longest, run);
+  }
+  let current = 0;
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    if (sorted[i]!.count > 0) current++;
+    else if (i === sorted.length - 1 && sorted[i]!.date === today) continue; // Today's grace period!
+    else break;
+  }
+  return { current, longest };
+}
+```
+
+#### The "Today Grace Period" Pattern:
+If an engineer committed every day for 20 days, and checks their card at 9:00 AM today (before writing their first commit of the day), their streak should **not** show 0.
+Line 111 inspects `i === sorted.length - 1 && date === today`. If today has 0 commits, it treats today as a grace period and continues counting the active streak from yesterday.
+
+### Deterministic Serial Number Generation
 ```typescript
 function serialFor(login: string, id: number): string {
   return String(id % 100000).padStart(5, "0") + "-" + login.slice(0, 3).toUpperCase();
 }
 ```
-- Example: GitHub ID `12345` for user `octocat` $\to$ `12345-OCT`
-
-### Streak Calculation (`calcStreaks`)
-Calculated from the 365-day contribution calendar (`github-contributions-api.jogruber.de`):
-1. **Longest Streak**: Iterates chronologically through days. Increments `run` if `count > 0`, resets to 0 otherwise. Records `max(longest, run)`.
-2. **Current Active Streak**: Iterates backwards from today.
-   - If today has 0 contributions, today is skipped as a grace period (the developer may still commit before midnight).
-   - Counts uninterrupted daily contributions until a day with 0 commits is reached.
+Uses the user's permanent numerical GitHub user ID modulo 100,000, padded to 5 digits, suffixed with the first 3 characters of their username capitalized.
+- Example: GitHub ID `583231` for user `octocat` $\to$ `83231-OCT`.
 
 ---
 
-## 11. Security, Rate Limiting & Error Management (`app.ts`)
+## 9. Defensive Security, Rate Limiting & Error Management (`app.ts`)
 
-1. **Proxy Trust**:
-   ```typescript
-   app.set("trust proxy", 1);
-   ```
-   Ensures rate limiting reads the true client IP behind Vercel, Cloudflare, or AWS ALB reverse proxies instead of the proxy server's internal IP.
-2. **IP Rate Limiting**:
-   ```typescript
-   app.use("/api", rateLimit({
-     windowMs: 60_000,
-     limit: 30,
-     standardHeaders: true,
-     legacyHeaders: false,
-     message: { error: "Too many requests, slow down" },
-   }));
-   ```
-   Guarantees that a single client cannot exhaust the server's GitHub API quota.
-3. **Input Validation Regex**:
+```typescript
+export const app: Express = express();
+app.set("trust proxy", 1);
+app.use(cors({ origin: process.env.ALLOWED_ORIGIN || "*" }));
+app.use(express.json());
+
+app.use("/api", rateLimit({
+  windowMs: 60_000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, slow down" },
+}));
+```
+
+### Security Measures:
+1. **Reverse Proxy Trust**: `app.set("trust proxy", 1)` instructs Express to read `X-Forwarded-For` from the immediate reverse proxy (Vercel/Cloudflare). Without this, the rate limiter would see the reverse proxy's IP and throttle all users globally.
+2. **Strict Regex Whitelisting**:
    ```typescript
    const USERNAME_RE = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
    ```
-   Conforms strictly to GitHub account username constraints (alphanumeric and single hyphens, 1-39 chars, no consecutive hyphens, no leading/trailing hyphen). Prevents path traversal and URL injection.
-4. **Information Leakage Prevention**:
+   Enforces GitHub's official rules: 1–39 alphanumeric characters, hyphens allowed only between alphanumeric characters (no leading, trailing, or double hyphens). Prevents SSRF or command injection attempts.
+3. **Information Leakage Prevention**:
    ```typescript
    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
      const status = typeof err.status === "number" ? err.status : 500;
-     if (status === 500) console.error(err);
+     if (status === 500) console.error(err); // Server-side log only
      res.status(status).json({
        error: status === 500 ? "Internal server error" : err.message,
      });
    });
    ```
-   Internal stack traces, database states, and token details are logged server-side only and never sent over the wire to clients.
+   Internal stack traces or system paths are never returned to clients on 500 errors.
 
 ---
 
-## 12. API Reference Contract
+## 10. Edge Cases & How They Are Handled
 
-### 1. Health Probe
-```http
-GET /api/health
-```
-**Response (200 OK):**
-```json
-{ "ok": true }
-```
+| Edge Case Scenario | Potential Failure | HackTheCard Handling Strategy |
+| :--- | :--- | :--- |
+| **User has 0 public repositories** | Division by zero in ranking / empty cards | Gracefully falls back to archetype `"Developer in Progress"`, empty repo array, and clean zero-state stats. |
+| **User has only forked repositories** | Fork filter removes all repos | When `pool.length === 0`, pool relaxes to include forks. Archetype classifies as `"Open Source Contributor"`. |
+| **User with 100+ repos (e.g. Torvalds)** | Payload bloat, slow language processing | Caps repository intake at latest 100 sorted by push date; only samples languages for top 10 ranked repos. |
+| **GitHub API Rate Limit Hit** | Crash or unhandled 403 error | Catches 429 and 403 with `x-ratelimit-remaining === "0"`; maps to clean HTTP 429 `"GitHub rate limit reached"`. |
+| **Upstream Network Lag / Hang** | Worker thread blocked indefinitely | `AbortSignal.timeout(8000)` aborts request after 8 seconds and maps to HTTP 504. |
+| **External Contributions Scraper Down** | Card generation completely blocked | Contribution fetch wrapped in `.catch(() => null)`. Card still renders repos and languages without calendar. |
+| **Repository with no detected language** | `null` crashes language map | Language field defaults to `null` or `"Open Source"`; filtered gracefully in byte aggregation. |
 
 ---
 
-### 2. Card Generation
-```http
-GET /api/card/:username
-GET /api/developer/:username
-```
+## 11. Time & Space Complexity Analysis (Big-O)
 
-#### Success Response (`200 OK`)
-```json
-{
-  "profile": {
-    "login": "octocat",
-    "name": "The Octocat",
-    "avatarUrl": "https://avatars.githubusercontent.com/u/583231",
-    "bio": "Building the future of software.",
-    "location": "San Francisco",
-    "followers": 15000,
-    "following": 9,
-    "publicRepos": 8,
-    "profileUrl": "https://github.com/octocat",
-    "createdAt": "2011-01-25T18:44:36Z"
-  },
-  "topRepos": [
-    {
-      "name": "Spoon-Knife",
-      "url": "https://github.com/octocat/Spoon-Knife",
-      "description": "This repo's big brother is a fork.",
-      "homepage": "https://octocat.github.io/Spoon-Knife",
-      "stars": 12800,
-      "forks": 14000,
-      "language": "HTML",
-      "topics": ["git", "forking", "starter"],
-      "pushedAt": "2024-02-10T11:22:33Z",
-      "score": 92.4
-    }
-  ],
-  "languages": [
-    { "language": "TypeScript", "bytes": 142000, "percent": 54.2 },
-    { "language": "HTML", "bytes": 68000, "percent": 25.9 },
-    { "language": "CSS", "bytes": 32000, "percent": 12.2 },
-    { "language": "Other", "bytes": 20000, "percent": 7.7 }
-  ],
-  "activity": {
-    "windowDays": 30,
-    "commits": 42,
-    "pullRequests": 6,
-    "newRepos": 1,
-    "reposTouched": 4,
-    "latest": [
-      {
-        "type": "PushEvent",
-        "repo": "octocat/Spoon-Knife",
-        "text": "Pushed 2 commits to octocat/Spoon-Knife",
-        "createdAt": "2024-03-01T14:20:00Z"
-      }
-    ]
-  },
-  "classification": {
-    "title": "The Full-Stack Architect",
-    "reason": "Balanced mix: 38% frontend and 35% backend languages."
-  },
-  "serial": "83231-OCT",
-  "streak": 14,
-  "longestStreak": 48,
-  "contributions": [
-    { "date": "2024-01-01", "count": 5, "level": 2 }
-  ],
-  "contributionTotal": 842,
-  "meta": {
-    "generatedAt": "2024-03-02T12:00:00.000Z",
-    "cached": false
-  }
-}
-```
+### Time Complexity: $O(N \log N + M)$
+- **Fetch Step**: $O(1)$ network bounded by 8s timeout.
+- **Filtering & Ranking**: For $N$ repositories (capped at 100):
+  - Scoring: $O(N)$ linear scan.
+  - Sorting: $O(N \log N)$ quicksort/timsort where $N \le 100$, taking $< 1 \text{ ms}$.
+- **Language Fetching**: Fetches top $K=10$ repos in parallel: $O(K)$.
+- **Language Aggregation**: For $M$ language entries across 10 repos ($M \le 100$): $O(M \log M)$ to sort top languages.
+- **Streak Calculation**: For 365 days of contributions ($D = 365$): $O(D)$ linear pass.
+- **Total Runtime**: Sub-millisecond compute time ($< 3 \text{ ms}$) plus network latency.
 
-#### Error Responses
-- `400 Bad Request`: `{"error": "Invalid GitHub username"}`
-- `404 Not Found`: `{"error": "GitHub user not found"}`
-- `429 Too Many Requests`: `{"error": "GitHub rate limit reached, try again later"}` or `{"error": "Too many requests, slow down"}`
-- `504 Gateway Timeout`: `{"error": "GitHub did not respond in time"}`
-- `500 Internal Server Error`: `{"error": "Internal server error"}`
+### Space Complexity: $O(1)$ Auxiliary Memory
+- Data structures are strictly bounded:
+  - Repositories: Max 100 objects.
+  - Languages: Max 10 maps.
+  - Cache: Bounded at 500 keys ($\sim 10 \text{ MB}$ max heap memory).
+
+---
+
+## 12. Top 10 Interview Questions & Model Answers
+
+### Q1: "Walk me through the backend architecture of this application."
+**Answer:**  
+*"The backend is built with Express and TypeScript in a cleanly partitioned architecture. It exposes a single resource-oriented REST endpoint `/api/card/:username`. It can deploy either as a long-running Node service or as a Vercel Serverless Function.*  
+*When a request arrives, it passes through security middleware—including a reverse-proxy aware rate limiter and strict username regex validation. It checks an in-memory TTL cache. On a cache miss, an orchestrator service dispatches concurrent requests to GitHub's REST API and contribution providers using `Promise.all`. The returned raw data flows through pure, deterministic pipeline stages: multi-factor repository ranking, parallel language byte aggregation, a 30-day activity window analyzer, and an archetype classification heuristic before being cached and returned."*
+
+---
+
+### Q2: "How did you design the repository ranking algorithm? Why not sort by stars?"
+**Answer:**  
+*"Sorting purely by stars produces poor results for developers whose most popular project is an ancient, unmaintained repository or an external fork. I designed a multi-factor formula evaluating 5 dimensions: stars, forks, recency, code substance, and presentation.*  
+*To handle extreme variance in stars and forks, I used logarithmic scaling relative to the user's personal maximum: $\log_{10}(1 + \text{stars}) / \log_{10}(1 + \text{maxStars})$. For recency, I implemented exponential half-life decay with a 180-day constant: $\exp(-\text{days}/180)$, ensuring actively maintained software ranks higher. I also applied a 50% penalty to archived repositories and excluded forks and profile READMEs."*
+
+---
+
+### Q3: "Why did you use `Promise.allSettled` instead of `Promise.all` when fetching languages?"
+**Answer:**  
+*"I use `Promise.all` for the primary fetch because the card cannot exist without user and repository data. However, for language maps across the top 10 repositories, I use `Promise.allSettled`. If one repository out of 10 was deleted or has restricted permissions, `Promise.all` would fail fast and reject the entire card generation. `Promise.allSettled` allows the 9 successful responses to be aggregated while gracefully dropping the single failure."*
+
+---
+
+### Q4: "How does your caching strategy work, and why not use Redis?"
+**Answer:**  
+*"For this project, an external Redis cache would add unnecessary infrastructure complexity, network latency, and operational cost. I implemented an in-memory cache using JavaScript's native `Map` with a 10-minute TTL.*  
+*To prevent memory leaks on high-volume traffic, I enforced a capacity ceiling of 500 entries. Because JavaScript Maps iterate in insertion order, evicting `store.keys().next().value` gives us an $O(1)$ FIFO eviction policy. Additionally, all responses return `Cache-Control: public, max-age=300`, leveraging browser and CDN caching to reduce load on the backend."*
+
+---
+
+### Q5: "How do you handle GitHub API rate limits?"
+**Answer:**  
+*"GitHub limits unauthenticated requests to 60/hr per IP and authenticated requests to 5,000/hr. My client handles this on four levels: First, support for a `GITHUB_TOKEN` environment variable in production. Second, aggressive in-memory caching so repeated lookups for the same user hit memory in $< 10 \text{ ms}$. Third, an IP-based rate limiter (30 requests/min) on the Express route to prevent single-client abuse. Fourth, intercepting status 429 and status 403 with `x-ratelimit-remaining: 0` to return a standardized HTTP 429 error message."*
+
+---
+
+### Q6: "How did you handle the streak calculation edge case for 'today'?"
+**Answer:**  
+*"In GitHub activity calendars, if a developer has a 50-day streak and loads their card in the morning before making their daily commit, today's commit count is 0. A naive backwards loop would see 0 and immediately reset their current streak to 0.*  
+*I solved this by introducing a 'today grace period': when scanning backward from today, if the final day is today and its count is 0, the loop skips it and evaluates yesterday. If yesterday has commits, the streak continues uninterrupted."*
+
+---
+
+### Q7: "Why is your archetype classification deterministic rather than using an LLM?"
+**Answer:**  
+*"Using an LLM for classification introduces three major issues: high API latency (1–3 seconds), non-deterministic output where the same developer gets different titles on refresh, and high operational cost.*  
+*Instead, I built a deterministic decision cascade based on empirical developer metrics: language percentage shares, verified topic tags, and keyword pattern matching across repository descriptions. It executes in microseconds, is 100% reproducible, and is easily unit-tested."*
+
+---
+
+### Q8: "What happens if a user inputs an invalid username or attempts injection?"
+**Answer:**  
+*"Before any network call is dispatched, the username is validated against `/^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i`. This matches GitHub's exact specification: 1–39 alphanumeric characters, no leading or trailing hyphens, and no double hyphens. Any invalid input immediately throws an `HttpError(400, 'Invalid GitHub username')` without wasting API quota or risking path injection."*
+
+---
+
+### Q9: "Why is `app.set('trust proxy', 1)` necessary?"
+**Answer:**  
+*"In modern cloud deployments (like Vercel, Render, or behind AWS ALB), traffic passes through a reverse proxy. By default, Express treats the immediate TCP connection as the client, which is the proxy's internal IP address. Without `trust proxy`, the rate limiter would treat all incoming global users as coming from the single proxy IP, throttling legitimate users. Enabling `trust proxy` allows Express to inspect the `X-Forwarded-For` header and rate-limit individual client IPs correctly."*
+
+---
+
+### Q10: "How do you ensure testability across these services?"
+**Answer:**  
+*"I decoupled business logic from network I/O. The ranking engine (`ranking.ts`), language aggregator (`languages.ts`), activity summarizer (`activity.ts`), and streak calculator are pure functions that accept plain objects and return deterministic values without side effects.*  
+*This allowed me to write comprehensive unit tests with Vitest covering edge cases: zero repos, all forks, archived repos, Jupyter Notebook filtering, and tie-breaking without needing to mock network requests."*
