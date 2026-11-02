@@ -65,7 +65,7 @@ function Corners({ color }: { color: string }) {
 
 function Shell({ theme, children, dim }: { theme: CardTheme; children?: ReactNode; dim?: number }) {
   return (
-    <div style={{ width: W + 16, height: H + 16, padding: 8, borderRadius: 24, background: theme.frame, position: "relative", fontFamily: "'Google Sans', 'Instrument Sans', system-ui, sans-serif" }}>
+    <div style={{ width: W + 16, height: H + 16, padding: 8, borderRadius: 24, background: theme.frame, position: "relative", fontFamily: "'Google Sans', 'Instrument Serif', system-ui, sans-serif" }}>
       <div style={{ position: "relative", width: W, height: H, borderRadius: 16, overflow: "hidden", background: theme.panel }}>
         <ThemeArt theme={theme.id} layer="back" dim={dim ?? 0} className="absolute inset-0 h-full w-full" />
         {children}
@@ -76,7 +76,7 @@ function Shell({ theme, children, dim }: { theme: CardTheme; children?: ReactNod
   );
 }
 
-const italic: CSSProperties = { fontFamily: "'Instrument Sans', serif", fontStyle: "italic" };
+const italic: CSSProperties = { fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: "italic" };
 
 function CodeSignature({ d, theme, compact = false }: { d: DeveloperData; theme: CardTheme; compact?: boolean }) {
   const cells = signatureCells(d.login);

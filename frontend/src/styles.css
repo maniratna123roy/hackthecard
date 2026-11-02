@@ -127,7 +127,6 @@
 
 @utility font-accent {
   font-family: var(--font-accent);
-  font-style: italic;
 }
 
 @layer components {
