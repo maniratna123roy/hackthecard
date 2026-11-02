@@ -45,8 +45,8 @@
   --color-stage: var(--stage);
   --color-stage-foreground: var(--stage-foreground);
   --color-stage-muted: var(--stage-muted);
-  --font-sans: "Google Sans", "Instrument Sans", system-ui, sans-serif;
-  --font-accent: "Instrument Sans", sans-serif;
+  --font-sans: "Google Sans", system-ui, sans-serif;
+  --font-accent: "Instrument Serif", Georgia, serif;
 }
 
 :root {
