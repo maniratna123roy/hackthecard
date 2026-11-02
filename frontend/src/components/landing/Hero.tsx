@@ -43,7 +43,7 @@ export function Hero({ onGenerate }: { onGenerate: (u: string) => void }) {
           </div>
           <h1 className="mt-6 text-[clamp(56px,8vw,112px)] font-bold leading-[0.9] tracking-[-0.045em]">
             Your code<br />
-            <span className="font-accent font-normal text-pop-red">has a face.</span><br />
+            <span className="font-accent font-normal italic text-pop-red">has a face.</span><br />
             Print it.
           </h1>
           <p className="mt-6 max-w-[46ch] text-lg text-muted-foreground">
