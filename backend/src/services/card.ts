@@ -39,7 +39,6 @@ export interface CardData {
     generatedAt: string;
     cached: boolean;
   };
-  // Extended fields for high-fidelity trading card rendering
   classification?: {
     title: string;
     reason: string;

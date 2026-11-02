@@ -8,8 +8,6 @@ export interface LanguageStat {
   percent: number;
 }
 
-// network: GET /repos/{owner}/{repo}/languages for each repo, in parallel.
-// allSettled: one failing repo must not break the whole card.
 export async function fetchLanguageMaps(
   repos: RawRepo[],
 ): Promise<Record<string, number>[]> {
@@ -24,7 +22,6 @@ export async function fetchLanguageMaps(
     .map((s) => s.value);
 }
 
-// pure: [{TypeScript: 60000, CSS: 10000}, {Python: 30000}] -> percentages
 export function aggregateLanguages(
   maps: Record<string, number>[],
   {

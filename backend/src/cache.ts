@@ -1,4 +1,3 @@
-// simple TTL map; resets on restart or serverless cold start
 interface CacheEntry<T> {
   value: T;
   expires: number;
@@ -19,7 +18,7 @@ export function get<T>(key: string): T | null {
 export function set<T>(key: string, value: T, ttlMs: number): void {
   if (store.size >= 500) {
     const firstKey = store.keys().next().value;
-    if (firstKey !== undefined) store.delete(firstKey); // cap memory
+    if (firstKey !== undefined) store.delete(firstKey);
   }
   store.set(key, { value, expires: Date.now() + ttlMs });
 }

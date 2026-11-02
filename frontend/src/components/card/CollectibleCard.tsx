@@ -104,7 +104,6 @@ export const CardFront = forwardRef<HTMLDivElement, { d: DeveloperData; theme: C
     <div ref={ref}>
       <Shell theme={theme}>
         <ThemeArt theme={theme.id} layer="fore" className="pointer-events-none absolute inset-0 h-full w-full" />
-        {/* identity */}
         <div style={{ position: "absolute", left: 20, top: 18, display: "flex", gap: 11, alignItems: "flex-end", color: theme.onArt, textShadow: shadow }}>
           <div style={{ width: 66, height: 66, borderRadius: 10, padding: 3, background: theme.frame, boxShadow: `0 0 0 1px ${theme.line}, 0 6px 14px ${hex(theme.frame, 0.5)}` }}>
             <img src={d.avatar} crossOrigin="anonymous" alt="" style={{ width: 60, height: 60, borderRadius: 7, display: "block" }} />
@@ -115,12 +114,10 @@ export const CardFront = forwardRef<HTMLDivElement, { d: DeveloperData; theme: C
             <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>@{d.login} · github.com/{d.login}</div>
           </div>
         </div>
-        {/* serial */}
         <div style={{ position: "absolute", right: 20, top: 16, textAlign: "right", color: theme.onArt, textShadow: shadow }}>
           <div style={{ fontSize: 7, letterSpacing: "0.2em", fontWeight: 600 }}>HACKTHECARD · SERIES I</div>
           <div style={{ fontSize: 7, letterSpacing: "0.2em", opacity: 0.8 }}>No. {d.serial} · T{theme.no}</div>
         </div>
-        {/* hero stats */}
         <Plate theme={theme} style={{ right: 16, top: 62, padding: "7px 10px", display: "flex", gap: 12 }}>
           {[["Stars", d.totalStars], ["Contrib · yr", d.contributionTotal]].map(([k, v]) => (
             <div key={k as string}>
@@ -130,7 +127,6 @@ export const CardFront = forwardRef<HTMLDivElement, { d: DeveloperData; theme: C
           ))}
         </Plate>
         <CodeSignature d={d} theme={theme} />
-        {/* info plate */}
         <Plate theme={theme} style={{ left: 14, right: 14, bottom: 14, height: 190, padding: "10px 12px" }}>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ width: 326 }}>

@@ -14,7 +14,6 @@ function rng(seed: number) {
   };
 }
 
-/** Smooth random ridge filled down to the bottom edge. */
 function ridge(seed: number, y: number, amp: number, steps = 9, sharp = false) {
   const r = rng(seed);
   const pts: [number, number][] = [];

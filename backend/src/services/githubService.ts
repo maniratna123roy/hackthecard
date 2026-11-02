@@ -132,8 +132,6 @@ async function gh<T>(path: string): Promise<T> {
   if (!res.ok) throw new Error(`GitHub responded with ${res.status}.`);
   return res.json() as Promise<T>;
 }
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export async function fetchDeveloperProfile(username: string): Promise<DeveloperData> {
   const login = parseUsername(username);
   if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(login)) {

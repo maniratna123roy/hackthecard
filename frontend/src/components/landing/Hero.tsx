@@ -3,17 +3,26 @@ import { useState, type FormEvent } from "react";
 const DEMOS = ["torvalds", "gaearon", "sindresorhus"];
 const TICKER = ["REPOS", "STARS", "LANGUAGES", "COMMITS", "FOLLOWERS", "STREAKS", "FORKS"];
 
-export function SiteHeader() {
+export function SiteHeader({ onOpenPrivacy }: { onOpenPrivacy?: () => void }) {
   return (
     <header className="sticky top-0 z-30 border-b-2 border-foreground bg-background">
       <div className="mx-auto flex max-w-[1320px] items-center justify-between px-6 py-4 md:px-10">
         <a href="#top" className="text-[22px] font-bold tracking-tight">
           HACK<span className="font-accent font-normal text-pop-red">the</span>CARD<span className="ml-1 inline-block h-3 w-3 bg-pop-blue" />
         </a>
-        <nav className="hidden gap-8 text-xs font-semibold uppercase tracking-[0.2em] md:flex">
+        <nav className="hidden items-center gap-8 text-xs font-semibold uppercase tracking-[0.2em] md:flex">
           <a href="#generate" className="hover:text-pop-red">01/ Generate</a>
           <a href="#series" className="hover:text-pop-red">02/ Series</a>
           <a href="#manifesto" className="hover:text-pop-red">03/ Manifesto</a>
+          {onOpenPrivacy && (
+            <button
+              type="button"
+              onClick={onOpenPrivacy}
+              className="cursor-pointer hover:text-pop-red uppercase"
+            >
+              04/ Privacy
+            </button>
+          )}
         </nav>
         <a href="#generate" className="brutal-btn px-5 py-2.5 text-sm">Make yours →</a>
       </div>
@@ -21,14 +30,33 @@ export function SiteHeader() {
   );
 }
 
-export function Hero({ onGenerate }: { onGenerate: (u: string) => void }) {
+interface HeroProps {
+  onGenerate: (u: string) => void;
+  policyAccepted: boolean;
+  setPolicyAccepted: (accepted: boolean) => void;
+  onOpenPrivacy: () => void;
+}
+
+export function Hero({ onGenerate, policyAccepted, setPolicyAccepted, onOpenPrivacy }: HeroProps) {
   const [v, setV] = useState("");
+  const [err, setErr] = useState(false);
+
   const go = (u: string) => {
     if (!u.trim()) return;
+    if (!policyAccepted) {
+      setErr(true);
+      return;
+    }
+    setErr(false);
     onGenerate(u.trim());
     document.getElementById("generate")?.scrollIntoView({ behavior: "smooth" });
   };
-  const submit = (e: FormEvent) => { e.preventDefault(); go(v); };
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    go(v);
+  };
+
   const cells = "wyKwyKw yyKyKwy ywKywKy".split(" ").join("");
 
   return (
@@ -52,15 +80,60 @@ export function Hero({ onGenerate }: { onGenerate: (u: string) => void }) {
           <form onSubmit={submit} className="mt-8 flex max-w-xl flex-col gap-3 sm:flex-row">
             <label className="brutal-box flex flex-1 items-center bg-card px-4">
               <span className="text-muted-foreground">github.com/</span>
-              <input value={v} onChange={(e) => setV(e.target.value)} placeholder="quietmonk" spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent py-3.5 pl-1 text-lg font-semibold outline-none" aria-label="GitHub username" />
+              <input
+                value={v}
+                onChange={(e) => {
+                  setV(e.target.value);
+                  if (err) setErr(false);
+                }}
+                placeholder="quietmonk"
+                spellCheck={false}
+                className="min-w-0 flex-1 bg-transparent py-3.5 pl-1 text-lg font-semibold outline-none"
+                aria-label="GitHub username"
+              />
             </label>
             <button type="submit" className="brutal-btn px-7 py-3.5">Generate card →</button>
           </form>
+
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="hero-policy"
+              checked={policyAccepted}
+              onChange={(e) => {
+                setPolicyAccepted(e.target.checked);
+                if (e.target.checked) setErr(false);
+              }}
+              className="h-4 w-4 cursor-pointer accent-foreground"
+            />
+            <label htmlFor="hero-policy" className="cursor-pointer select-none text-xs text-muted-foreground">
+              I agree to the{" "}
+              <button
+                type="button"
+                onClick={onOpenPrivacy}
+                className="font-semibold text-foreground underline hover:text-pop-red"
+              >
+                Privacy Policy
+              </button>
+            </label>
+          </div>
+          {err && (
+            <p className="mt-2 text-xs font-semibold text-pop-red">
+              Please accept the privacy policy to continue.
+            </p>
+          )}
+
           <div className="mt-6 flex flex-wrap items-center gap-2">
             <span className="mr-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Try a demo:</span>
             {DEMOS.map((d) => (
-              <button key={d} onClick={() => go(d)} className="border-2 border-foreground bg-card px-3 py-1 text-sm font-semibold transition-colors hover:bg-pop-yellow">@{d}</button>
+              <button
+                key={d}
+                type="button"
+                onClick={() => go(d)}
+                className="border-2 border-foreground bg-card px-3 py-1 text-sm font-semibold transition-colors hover:bg-pop-yellow"
+              >
+                @{d}
+              </button>
             ))}
           </div>
         </div>
@@ -68,7 +141,9 @@ export function Hero({ onGenerate }: { onGenerate: (u: string) => void }) {
         <div className="relative mx-auto h-[440px] w-full max-w-[560px]" aria-hidden>
           <div className="absolute right-0 top-0 h-[300px] w-[78%] border-2 border-foreground bg-pop-blue shadow-[8px_8px_0_var(--foreground)]">
             <div className="absolute left-10 top-8 text-4xl font-bold text-pop-cream">&lt;/&gt;</div>
-            {Array.from({ length: 7 }).map((_, i) => <div key={i} className="absolute left-10 right-10 h-px bg-pop-cream/40" style={{ top: 50 + i * 34 }} />)}
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="absolute left-10 right-10 h-px bg-pop-cream/40" style={{ top: 50 + i * 34 }} />
+            ))}
             <svg className="absolute inset-0 h-full w-full" viewBox="0 0 400 300" preserveAspectRatio="none">
               <polyline points="120,260 200,200 250,90 340,55" fill="none" stroke="var(--pop-yellow)" strokeWidth="7" />
             </svg>
@@ -78,14 +153,23 @@ export function Hero({ onGenerate }: { onGenerate: (u: string) => void }) {
             <div className="text-3xl font-bold text-pop-cream">HTC-00001</div>
             <div className="mt-4 grid grid-cols-7 gap-1.5">
               {cells.split("").map((c, i) => (
-                <div key={i} className={`aspect-square border border-foreground ${c === "y" ? "bg-pop-yellow" : c === "K" ? "bg-foreground" : "bg-pop-cream"}`} />
+                <div
+                  key={i}
+                  className={`aspect-square border border-foreground ${
+                    c === "y" ? "bg-pop-yellow" : c === "K" ? "bg-foreground" : "bg-pop-cream"
+                  }`}
+                />
               ))}
             </div>
           </div>
           <div className="absolute bottom-0 right-6 grid h-32 w-32 place-items-center rounded-full border-2 border-foreground bg-pop-yellow">
             <svg viewBox="0 0 100 100" className="spin-slow absolute inset-0">
-              <defs><path id="circ" d="M50,50 m-36,0 a36,36 0 1,1 72,0 a36,36 0 1,1 -72,0" /></defs>
-              <text fontSize="9.5" fontWeight="700" letterSpacing="2" fill="var(--foreground)"><textPath href="#circ">AUTHENTIC · COMMIT · VERIFIED ·</textPath></text>
+              <defs>
+                <path id="circ" d="M50,50 m-36,0 a36,36 0 1,1 72,0 a36,36 0 1,1 -72,0" />
+              </defs>
+              <text fontSize="9.5" fontWeight="700" letterSpacing="2" fill="var(--foreground)">
+                <textPath href="#circ">AUTHENTIC · COMMIT · VERIFIED ·</textPath>
+              </text>
             </svg>
             <div className="grid h-11 w-11 place-items-center rounded-full bg-foreground text-xl text-pop-yellow">✓</div>
           </div>
@@ -102,12 +186,13 @@ export function Hero({ onGenerate }: { onGenerate: (u: string) => void }) {
   );
 }
 
-export function Manifesto() {
+export function Manifesto({ onOpenPrivacy }: { onOpenPrivacy?: () => void }) {
   const items = [
     { n: "01", t: "Real data only", d: "Every number on the card comes from public GitHub. Nothing invented, nothing inflated.", c: "bg-pop-blue text-pop-cream" },
     { n: "02", t: "Twelve worlds", d: "Hand-drawn environments, from tropical canopies to neon megacities.", c: "bg-pop-red text-pop-cream" },
     { n: "03", t: "Yours to keep", d: "Flip it, export front and back in high resolution, share it anywhere.", c: "bg-pop-yellow text-foreground" },
   ];
+
   return (
     <section id="manifesto" className="border-t-2 border-foreground">
       <div className="mx-auto max-w-[1320px] px-6 py-16 md:px-10">
@@ -122,6 +207,22 @@ export function Manifesto() {
           ))}
         </div>
       </div>
+      {onOpenPrivacy && (
+        <footer className="border-t-2 border-foreground bg-card py-6">
+          <div className="mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-4 px-6 sm:flex-row md:px-10">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              PRESS Nº 01 · COLLECTIBLE DEVELOPER IDENTITIES
+            </span>
+            <button
+              type="button"
+              onClick={onOpenPrivacy}
+              className="text-xs font-bold uppercase tracking-[0.15em] underline underline-offset-4 hover:text-pop-red"
+            >
+              Privacy Policy
+            </button>
+          </div>
+        </footer>
+      )}
     </section>
   );
 }

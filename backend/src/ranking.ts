@@ -53,17 +53,14 @@ export function scoreRepo(
 }
 
 export function rankRepos(repos: RawRepo[], now = Date.now()): RankedRepo[] {
-  // 1. drop forks and the profile-README repo (named after the user)
   let pool = repos.filter(
     (r) =>
       !r.fork &&
       (!r.owner?.login || r.name.toLowerCase() !== r.owner.login.toLowerCase()),
   );
 
-  // 2. fallback: an account with only forks still gets a card
   if (pool.length === 0) pool = repos;
 
-  // maxStars/maxForks are clamped to 1 so log10(1)=0 never divides 0 by 0
   const maxStars = Math.max(1, ...pool.map((r) => r.stargazers_count || 0));
   const maxForks = Math.max(1, ...pool.map((r) => r.forks_count || 0));
 

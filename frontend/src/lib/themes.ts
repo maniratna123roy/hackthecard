@@ -1,20 +1,17 @@
-// Card theme palettes. These are artwork colors for the collectible itself
-// (printed-object colors), kept as data so each world can be rendered and exported.
-
 export interface CardTheme {
   id: string;
   no: string;
   name: string;
   tagline: string;
   backTitle: string;
-  frame: string; // outer printed border
-  line: string; // ornamental inner rule
-  panel: string; // information plate
+  frame: string;
+  line: string;
+  panel: string;
   panelAlpha: number;
   ink: string;
   muted: string;
   accent: string;
-  onArt: string; // text placed directly on artwork
+  onArt: string;
   heat: [string, string, string, string, string];
 }
 

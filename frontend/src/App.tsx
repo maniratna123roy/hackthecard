@@ -5,6 +5,7 @@ import { fetchDeveloper } from "@/lib/api";
 import { THEMES } from "@/lib/themes";
 import { CardBack, CardFront, PocketCard } from "@/components/card/CollectibleCard";
 import { Hero, Manifesto, SiteHeader } from "@/components/landing/Hero";
+import { PrivacyModal } from "@/components/landing/PrivacyModal";
 import { CardLoader } from "@/components/card/CardLoader";
 import { ThemeArt } from "@/components/card/ThemeArt";
 
@@ -27,9 +28,19 @@ export function App() {
   const [themeIdx, setThemeIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
-  // Loader stays up at least 2.8s for inking effect even on fast network
   const [hold, setHold] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [policyAccepted, setPolicyAccepted] = useState(() => {
+    return localStorage.getItem("htc_policy_accepted") !== "false";
+  });
+  const [policyError, setPolicyError] = useState(false);
   const holdTimer = useRef<number | undefined>(undefined);
+
+  const handlePolicyChange = (accepted: boolean) => {
+    setPolicyAccepted(accepted);
+    localStorage.setItem("htc_policy_accepted", String(accepted));
+    if (accepted) setPolicyError(false);
+  };
 
   const startHold = () => {
     setHold(true);
@@ -55,6 +66,11 @@ export function App() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (!policyAccepted) {
+      setPolicyError(true);
+      return;
+    }
+    setPolicyError(false);
     if (input.trim()) {
       setUser(input.trim());
       setFlipped(false);
@@ -81,8 +97,11 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <SiteHeader />
+      <SiteHeader onOpenPrivacy={() => setPrivacyOpen(true)} />
       <Hero
+        policyAccepted={policyAccepted}
+        setPolicyAccepted={handlePolicyChange}
+        onOpenPrivacy={() => setPrivacyOpen(true)}
         onGenerate={(u) => {
           setInput(u);
           setUser(u);
@@ -120,7 +139,10 @@ export function App() {
               <input
                 id="gh"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  if (policyError) setPolicyError(false);
+                }}
                 placeholder="octocat"
                 autoComplete="off"
                 spellCheck={false}
@@ -134,6 +156,31 @@ export function App() {
                 {q.isFetching ? "Pressing…" : "Print card"}
               </button>
             </div>
+
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="policy-checkbox"
+                checked={policyAccepted}
+                onChange={(e) => handlePolicyChange(e.target.checked)}
+                className="h-4 w-4 cursor-pointer accent-foreground"
+              />
+              <label htmlFor="policy-checkbox" className="cursor-pointer select-none text-xs text-muted-foreground">
+                I accept the{" "}
+                <button
+                  type="button"
+                  onClick={() => setPrivacyOpen(true)}
+                  className="font-semibold text-foreground underline hover:text-pop-red"
+                >
+                  Privacy Policy
+                </button>
+              </label>
+            </div>
+            {policyError && (
+              <p className="mt-2 text-xs font-semibold text-pop-red">
+                Please accept the privacy policy to continue.
+              </p>
+            )}
           </form>
 
           {q.data && (
@@ -242,7 +289,14 @@ export function App() {
           topics — never at random.
         </p>
       </section>
-      <Manifesto />
+      <Manifesto onOpenPrivacy={() => setPrivacyOpen(true)} />
+
+      <PrivacyModal
+        isOpen={privacyOpen}
+        onClose={() => setPrivacyOpen(false)}
+        onAccept={() => handlePolicyChange(true)}
+        isAccepted={policyAccepted}
+      />
     </div>
   );
 }

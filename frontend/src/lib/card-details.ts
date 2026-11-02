@@ -1,6 +1,5 @@
 import type { ContributionDay } from "./github";
 
-// A decorative identity mark, not a QR code or a verification seal.
 export function signatureCells(login: string): boolean[] {
   let seed = 2166136261;
   for (const char of login.toLowerCase()) {

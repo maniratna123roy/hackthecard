@@ -22,13 +22,13 @@ export interface Config {
 export const config: Config = {
   PORT: Number(process.env.PORT) || 3001,
   GITHUB_API: "https://api.github.com",
-  CACHE_TTL_MS: 10 * 60 * 1000, // 10 minutes
-  TOP_REPOS: 5, // repos shown on the card
-  LANG_SAMPLE: 10, // repos used for language stats
+  CACHE_TTL_MS: 10 * 60 * 1000,
+  TOP_REPOS: 5,
+  LANG_SAMPLE: 10,
   ACTIVITY_DAYS: 30,
   FEED_SIZE: 5,
-  RECENCY_DECAY_DAYS: 180, // score fades as exp(-days/180)
-  SUBSTANCE_KB_CAP: 500, // repo size counted up to 500 KB
+  RECENCY_DECAY_DAYS: 180,
+  SUBSTANCE_KB_CAP: 500,
   ARCHIVED_PENALTY: 0.5,
   WEIGHTS: {
     stars: 0.3,
@@ -37,7 +37,7 @@ export const config: Config = {
     substance: 0.15,
     presentation: 0.15,
   },
-  IGNORED_LANGUAGES: new Set(["Jupyter Notebook"]), // huge JSON, skews bytes
+  IGNORED_LANGUAGES: new Set(["Jupyter Notebook"]),
 };
 
 export default config;

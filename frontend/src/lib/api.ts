@@ -9,7 +9,6 @@ export async function fetchDeveloper(username: string): Promise<DeveloperData> {
     const res = await fetch(`${baseUrl}/api/card/${encodeURIComponent(cleanUsername)}`);
     if (res.ok) {
       const card = await res.json();
-      // Map the backend Builder Card JSON to DeveloperData
       const profile = card.profile || {};
       const repos: Repo[] = (card.topRepos || []).map((r: any) => ({
         name: r.name,
@@ -72,6 +71,5 @@ export async function fetchDeveloper(username: string): Promise<DeveloperData> {
     }
   }
 
-  // Standalone / offline fallback
   return fetchDeveloperDirect(cleanUsername);
 }
